@@ -179,6 +179,7 @@ def main() -> None:
             import wandb
 
             wandb_run = wandb.init(
+                entity=cfg.get("wandb_entity"),
                 project=cfg["wandb_project"],
                 name=cfg["run_name"],
                 config=cfg,
