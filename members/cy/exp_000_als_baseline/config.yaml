@@ -37,4 +37,4 @@ filter_already_liked: true        # don't re-recommend items the user already sa
 # 잘못 갔던 사례 있음). 항상 명시하는 게 안전.
 wandb_entity: yooni0125-
 wandb_project: cy-commerce-recsys
-run_name: cy_exp_000_als_baseline
+run_name: exp_000_als_baseline

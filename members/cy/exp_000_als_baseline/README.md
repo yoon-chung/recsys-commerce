@@ -58,7 +58,7 @@ python inference.py       # ./predictions.parquet + ./output.csv + 자체 val ND
 - **자체 validation NDCG@10**: `_._____` (last 7 days hold-out, restrict_to_train=True, gt=purchase)
 - **자체 validation recall@10**: `_._____`
 - **공식 Public NDCG@10**: 제출 시 채워넣기 (베이스라인 공시 = 0.0847)
-- **wandb run**: `cy-commerce-recsys` / `cy_exp_000_als_baseline`
+- **wandb run**: `cy-commerce-recsys` / `exp_000_als_baseline`
   - artifacts: 모델 + predictions
 
 ## 결론 / 다음 액션 (실행 후)
