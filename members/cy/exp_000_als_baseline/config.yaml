@@ -1,0 +1,37 @@
+# exp_000_als_baseline — implicit ALS baseline reproduction with self-val.
+#
+# Goal: produce reference NDCG@10 on the last-7-day hold-out, validate the
+# shared/ pipeline end-to-end on the real 8.35M-event / 638k-user data.
+
+# ---- Data paths (server canonical layout; override via CLI for testing) ---
+train_data: /root/data/train.parquet
+sample_submission: /root/data/sample_submission.csv
+
+# ---- Validation split -----------------------------------------------------
+val_days: 7                       # last 7 days mirror the official 1-week eval
+gt_event_types: [purchase]        # competition metric is purchase-based
+
+# ---- Implicit-feedback event weights -------------------------------------
+# Converts the event log into an implicit-feedback confidence matrix.
+# Order-of-magnitude guess; tune later if a sweep shows it matters.
+event_weights:
+  view: 1.0
+  cart: 3.0
+  purchase: 5.0
+
+# ---- ALS hyperparameters (implicit.als.AlternatingLeastSquares) ----------
+factors: 128
+regularization: 0.01
+iterations: 15
+alpha: 40.0                       # confidence scaling: c_ui = 1 + alpha * r_ui
+use_gpu: true                     # RTX 3090 24GB available on server
+seed: 42
+
+# ---- Prediction / submission ---------------------------------------------
+top_n: 50                         # predictions.parquet ranks 1..top_n
+items_per_user: 10                # submission.csv items per user
+filter_already_liked: true        # don't re-recommend items the user already saw
+
+# ---- wandb ---------------------------------------------------------------
+wandb_project: cy-commerce-recsys
+run_name: cy_exp_000_als_baseline
