@@ -27,7 +27,15 @@ import pandas as pd
 import yaml
 from scipy.sparse import load_npz
 
-from implicit.als import AlternatingLeastSquares
+# NOTE: `implicit.als.AlternatingLeastSquares` is a factory FUNCTION that
+# dispatches to the GPU or CPU concrete class based on `use_gpu`. It has no
+# `.load` classmethod. Import the concrete class matching the saved backend.
+def _als_class(use_gpu: bool):
+    if use_gpu:
+        from implicit.gpu.als import AlternatingLeastSquares as _Cls
+    else:
+        from implicit.cpu.als import AlternatingLeastSquares as _Cls
+    return _Cls
 
 from shared.data_loader import load_train_data, load_mappings  # noqa: E402
 from shared.validation import time_based_split  # noqa: E402
@@ -62,7 +70,8 @@ def main() -> None:
 
     # ---- 1. Load model + train artifacts ----------------------------------
     logger.info("loading ALS model from %s", saved_dir / "als.npz")
-    model = AlternatingLeastSquares.load(str(saved_dir / "als.npz"))
+    AlsClass = _als_class(cfg["use_gpu"])
+    model = AlsClass.load(str(saved_dir / "als.npz"))
     interactions = load_npz(str(saved_dir / "interactions.npz"))
     mappings = load_mappings(str(saved_dir / "mappings"))
     val_gt_df = pd.read_parquet(saved_dir / "val_gt.parquet")
