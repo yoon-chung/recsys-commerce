@@ -55,26 +55,51 @@ python inference.py
 
 ## 결과 (2026-05-20)
 
-- **자체 validation NDCG@10 = 0.18376** (last 7 days hold-out, restrict_to_train=True, gt=purchase, eval=928 users)
-- **자체 validation recall@10 = 0.25578**
-- 비교: 1차 mismatched 시도 NDCG=0.0288 / recall=0.0566 → **6.4× / 4.5× 점프**
-- 비교: 베이스라인 공시 Public NDCG@10 = 0.0847 → **우리 자체 val이 2.17× 높음** (다른 평가 윈도우: 우리 Feb 23~29 vs 베이스라인 Mar 1~7)
-- **공식 Public NDCG@10**: 미제출 (추후 calibration 제출 시 채워넣기)
-- **wandb run**: `cy-commerce-recsys` / `exp_000_als_baseline` (entity `yooni0125-`, 2026-05-20T07:52:45Z 시작, train+inference 단일 run)
+| 메트릭 | 값 | 비교 |
+|---|---:|---|
+| 자체 val NDCG@10 (Feb 23~29 hold-out, 928 eval users) | **0.18376** | 1차 mismatched 0.0288 대비 6.4× |
+| 자체 val recall@10 | **0.25578** | 1차 0.0566 대비 4.5× |
+| **공식 Public NDCG@10 (Mar 1~7)** | **0.0791** | 자체 val의 43% |
+| 베이스라인 공시 public | 0.0847 | 우리가 **6.6% 낮음** |
 
-## 결론 — 시나리오 (a) "self-val ≈ 또는 > 0.0847" 적중
+- **누적 제출**: 1회 (calibration용)
+- **wandb run**: `cy-commerce-recsys` / `exp_000_als_baseline` (entity `yooni0125-`, 2026-05-20T07:52:45Z, train+inference 단일 run)
 
-README 작성 시 세 분기 중 첫 번째 (인프라/파이프라인 OK + 1차의 hyperparams가 갭 원인)였음. 다만 **self-val이 public보다 2.17× 높다는 것** 자체가 새로운 정보 — Feb 27~29 spike가 자체 val을 *쉽게* 만들었을 가능성이 높음:
+## 결론 — 파이프라인 검증 완료, calibration 비율 확보
 
-- Spike 3일에 전체 train purchase의 69.2%가 집중 ([docs/eda_findings.md §5](../../../docs/eda_findings.md))
-- 이 구간 구매자들은 같은 item을 직전에 view한 경우가 많음 → `filter_already_liked=False`로 그 item을 그대로 추천 가능 → 높은 self-val
-- Public test (Mar 1~7)는 spike 이후 정상 분포일 가능성 → 자체 val 효과 재현 어려움
+### 1. 파이프라인은 정상 동작
 
-**즉, 자체 val 0.1838은 floor가 아닌 ceiling일 수 있음**. 후속 실험은 self-val로 ranking 비교만 하고 절대값 신뢰하지 말 것. 결정적 calibration은 public 제출 1회 필요.
+베이스라인 공시 0.0847과 우리 0.0791의 갭 = **6.6%**, 학습 데이터 손실 비율 7일/120일 = **5.8%**와 거의 일치. 즉 갭의 거의 전부가 **학습 데이터 7일 holdout** 때문이고, 알고리즘/구현/shared 파이프라인은 베이스라인과 등가. 0.0791이 0.0847에 가까운 것만으로:
 
-## 다음 액션 후보
+- shared/ 4모듈 (data_loader / validation / metrics / submission) 모두 638k user × 8.35M event 실제 스케일에서 정상
+- 베이스라인 hyperparams + flags 그대로 매칭한 결과 베이스라인 거의 재현
+- predictions.parquet → output.csv → validate_submission → 실제 제출까지 end-to-end OK
 
-- **calibration 제출**: exp_000의 `output.csv`를 제출해서 Public NDCG@10 측정. 베이스라인 0.0847에 근접하면 self-val→public 비율 ≈ 2.17 확정 → 이후 self-val 점수에서 약 ÷2.17 환산해 public 기대치 추정 가능
-- exp_001: ALS lever ablation (선택사항) — `filter_already_liked` / event_weights / factors 중 어떤 게 6.4× 점프의 주범인지 분리
-- **exp_002**: sequential 모델 (TiSASRec 또는 BSARec, [docs/eda_findings.md §11](../../../docs/eda_findings.md)) — EDA가 강력 권장. ALS 베이스라인은 이미 재현됐으니 다음 단계 진입 자연스러움
+### 2. self-val ÷ public ≈ 2.32 (calibration 비율 확정)
+
+향후 새 모델의 self-val 점수를 보면 약 **÷2.32** 해서 public 기대치 추정 가능. 예: 다음 모델 self-val 0.25 → public ~0.108 예상.
+
+단 이 비율은 **ALS + 113일 학습 + Feb 23~29 self-val** 조합에서 측정된 것. 다른 모델(시퀀셜)이나 다른 split (val_days 변경) 시 비율 달라질 수 있음. 첫 시퀀셜 실험 끝나면 한 번 더 calibration 제출 권장.
+
+### 3. self-val의 신뢰 범위
+
+- ✅ 같은 알고리즘·같은 split 내 **상대 비교** (ranking) — 신뢰 가능
+- ⚠️ **절대값** — Feb 27~29 spike 효과로 inflate됨 ([docs/eda_findings.md §5](../../../docs/eda_findings.md))
+- 다음 실험에선 self-val을 비교 지표로, public 환산치를 "이 모델이 제출 가치 있는가" 판단 근거로 활용
+
+### 4. 트레이드오프 발견
+
+| 모드 | 학습 데이터 | 자체 val 가능? | 예상 public |
+|---|---|---|---|
+| Hold-out 7일 (exp_000 현재) | 113일 | ✅ | 0.0791 (측정값) |
+| Full data (베이스라인 공시 방식) | 120일 | ❌ | 0.0847 (공시) |
+
+**향후 실험 권고**: 모델 개발/iteration 시엔 hold-out으로 self-val, 최종 제출 시엔 full data로 재학습. (현재 train.py는 split 강제 — 추후 `val_days=0` 옵션 추가 검토)
+
+## 다음 액션
+
+- ~~calibration 제출~~ ✅ 완료 (NDCG@10 = 0.0791)
+- exp_001: ALS lever ablation (선택사항) — `filter_already_liked` / event_weights / factors 중 어떤 게 6.4× 점프의 주범인지 분리. 점수 향상보단 학습 목적.
+- **exp_001 또는 exp_002 (다음 우선순위)**: sequential 모델 (TiSASRec 또는 BSARec, [docs/candidate_models.md](../../../docs/candidate_models.md)) — EDA 강력 권장. ALS 베이스라인 재현 완료했으니 다음 단계 진입 자연스러움. self-val × 1/2.32 ≈ public 기대치로 활용
 - exp_003: two-stage (ALS candidate + LightGBM reranker)
+- exp_NNN: EASE — 30줄 구현, ensemble 다양성 보조 멤버

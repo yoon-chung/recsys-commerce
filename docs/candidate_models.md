@@ -6,11 +6,14 @@
 
 ## 0. 진행 상태
 
-| exp | model | self-val NDCG@10 | self-val recall@10 | public | status |
-|---|---|---:|---:|---:|---|
-| 000 | ALS (baseline match: factors=32, alpha=10, reg=0.001, weights 1/1/1, filter=False) | 0.1838 | 0.2558 | 미제출 | ✅ 완료 |
+| exp | model | self-val NDCG@10 | self-val recall@10 | public NDCG@10 | self-val/public | status |
+|---|---|---:|---:|---:|---:|---|
+| 000 | ALS (baseline match: factors=32, alpha=10, reg=0.001, weights 1/1/1, filter=False) | 0.1838 | 0.2558 | **0.0791** | 2.32 | ✅ 완료 |
 
-ALS는 정답이 아님 — Feb 27~29 spike에 잘 맞춰진 결과로, public 기대치는 0.0847 (≈ baseline 공시) 근처일 가능성. 더 강한 모델 후보들 ↓.
+**Calibration 확정** (2026-05-20):
+- 우리 public 0.0791 vs baseline 공시 0.0847 = 6.6% 갭 → 학습 데이터 7일 손실(5.8%)과 거의 일치 → 파이프라인 정상
+- **self-val ÷ public ≈ 2.32** → 향후 모델 비교 시 self-val에서 ÷2.32 환산해 public 기대치 추정 (같은 split 가정)
+- 단, 이 비율은 ALS + Feb 23-29 hold-out 조합 측정값. 시퀀셜 모델은 비율 다를 수 있어서 첫 시퀀셜 끝나면 re-calibration 권장
 
 ---
 
