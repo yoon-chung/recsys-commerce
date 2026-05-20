@@ -53,22 +53,28 @@ python inference.py
 - `predictions.parquet` — top-50 + score (.gitignored, wandb backup)
 - `output.csv` — 제출 파일, shape (6,382,570, 2) (.gitignored, 로컬 백업)
 
-## 결과 (실행 후 채워넣기)
+## 결과 (2026-05-20)
 
-- **자체 validation NDCG@10**: `_._____` (last 7 days hold-out, restrict_to_train=True, gt=purchase)
-- **자체 validation recall@10**: `_._____`
-- **공식 Public NDCG@10**: 제출 시 (베이스라인 공시 = 0.0847)
-- **wandb run**: `cy-commerce-recsys` / `exp_000_als_baseline` (entity `yooni0125-`)
+- **자체 validation NDCG@10 = 0.18376** (last 7 days hold-out, restrict_to_train=True, gt=purchase, eval=928 users)
+- **자체 validation recall@10 = 0.25578**
+- 비교: 1차 mismatched 시도 NDCG=0.0288 / recall=0.0566 → **6.4× / 4.5× 점프**
+- 비교: 베이스라인 공시 Public NDCG@10 = 0.0847 → **우리 자체 val이 2.17× 높음** (다른 평가 윈도우: 우리 Feb 23~29 vs 베이스라인 Mar 1~7)
+- **공식 Public NDCG@10**: 미제출 (추후 calibration 제출 시 채워넣기)
+- **wandb run**: `cy-commerce-recsys` / `exp_000_als_baseline` (entity `yooni0125-`, 2026-05-20T07:52:45Z 시작, train+inference 단일 run)
 
-## 결론 / 다음 액션 (실행 후)
+## 결론 — 시나리오 (a) "self-val ≈ 또는 > 0.0847" 적중
 
-다음 분기 판단 기준:
+README 작성 시 세 분기 중 첫 번째 (인프라/파이프라인 OK + 1차의 hyperparams가 갭 원인)였음. 다만 **self-val이 public보다 2.17× 높다는 것** 자체가 새로운 정보 — Feb 27~29 spike가 자체 val을 *쉽게* 만들었을 가능성이 높음:
 
-- **self-val ≈ 0.0847에 근접**: 인프라/파이프라인 모두 OK + 1차 시도의 hyperparams가 갭의 진짜 원인 → 다음 실험은 더 강한 모델 또는 ensemble로 진입
-- **self-val ≪ 0.0847 (예: 0.03~0.05)**: 분포 shift가 메인. Feb 27~29 spike가 self-val을 어렵게 만듦 → public 점수만 신뢰. 추후 실험은 public 기준으로 평가 우선
-- **self-val ≪ 0.0288 (재시도가 더 나빠짐)**: hyperparam 매치를 잘못 했거나 파이프라인 어딘가 버그 → diff 다시 검토
+- Spike 3일에 전체 train purchase의 69.2%가 집중 ([docs/eda_findings.md §5](../../../docs/eda_findings.md))
+- 이 구간 구매자들은 같은 item을 직전에 view한 경우가 많음 → `filter_already_liked=False`로 그 item을 그대로 추천 가능 → 높은 self-val
+- Public test (Mar 1~7)는 spike 이후 정상 분포일 가능성 → 자체 val 효과 재현 어려움
 
-이후 후보:
-- exp_001: ALS lever ablation (필요시) — factors / event_weights / filter_already_liked 한 번에 하나씩
-- exp_002: BSARec / TiSASRec 등 sequential (EDA 강력 권장)
+**즉, 자체 val 0.1838은 floor가 아닌 ceiling일 수 있음**. 후속 실험은 self-val로 ranking 비교만 하고 절대값 신뢰하지 말 것. 결정적 calibration은 public 제출 1회 필요.
+
+## 다음 액션 후보
+
+- **calibration 제출**: exp_000의 `output.csv`를 제출해서 Public NDCG@10 측정. 베이스라인 0.0847에 근접하면 self-val→public 비율 ≈ 2.17 확정 → 이후 self-val 점수에서 약 ÷2.17 환산해 public 기대치 추정 가능
+- exp_001: ALS lever ablation (선택사항) — `filter_already_liked` / event_weights / factors 중 어떤 게 6.4× 점프의 주범인지 분리
+- **exp_002**: sequential 모델 (TiSASRec 또는 BSARec, [docs/eda_findings.md §11](../../../docs/eda_findings.md)) — EDA가 강력 권장. ALS 베이스라인은 이미 재현됐으니 다음 단계 진입 자연스러움
 - exp_003: two-stage (ALS candidate + LightGBM reranker)
