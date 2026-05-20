@@ -130,7 +130,6 @@ def main() -> None:
                 project=cfg["wandb_project"],
                 name=cfg["run_name"],
                 config=cfg,
-                job_type="train",
             )
         except ImportError:
             logger.warning("wandb not installed; continuing without it")
@@ -161,7 +160,8 @@ def main() -> None:
 
     logger.info("saved: %s, %s, %s", model_path, saved_dir / "val_gt.parquet", saved_dir / "eval_users.json")
 
-    # 7. wandb model artifact
+    # 7. wandb model artifact + record run id so inference.py can resume
+    # the same run rather than spawning a duplicate same-named run.
     if wandb_run is not None:
         import wandb
 
@@ -171,6 +171,7 @@ def main() -> None:
         artifact.add_file(str(saved_dir / "mappings" / "user2idx.json"))
         artifact.add_file(str(saved_dir / "mappings" / "item2idx.json"))
         wandb.log_artifact(artifact)
+        (saved_dir / "wandb_run_id.txt").write_text(wandb_run.id)
         wandb_run.finish()
 
     logger.info("train.py done")

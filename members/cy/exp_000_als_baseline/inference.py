@@ -178,14 +178,27 @@ def main() -> None:
         try:
             import wandb
 
-            wandb_run = wandb.init(
+            # Resume train.py's run (id was persisted to saved/wandb_run_id.txt)
+            # so train + inference live as a single wandb run, not two same-named
+            # runs. Fall back to a fresh run only if no id was recorded (e.g. train
+            # was invoked with --no-wandb).
+            init_kwargs = dict(
                 entity=cfg.get("wandb_entity"),
                 project=cfg["wandb_project"],
                 name=cfg["run_name"],
                 config=cfg,
-                job_type="inference",
-                resume="allow",
             )
+            run_id_file = saved_dir / "wandb_run_id.txt"
+            if run_id_file.exists():
+                init_kwargs["id"] = run_id_file.read_text().strip()
+                init_kwargs["resume"] = "must"
+            else:
+                logger.warning(
+                    "no wandb_run_id.txt under %s -- inference will spawn a new run",
+                    saved_dir,
+                )
+                init_kwargs["resume"] = "allow"
+            wandb_run = wandb.init(**init_kwargs)
             wandb.log(
                 {
                     "val_ndcg@10": ndcg10,
