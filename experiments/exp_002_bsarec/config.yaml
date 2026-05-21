@@ -46,9 +46,15 @@ c: 5
 
 # ---- Training -------------------------------------------------------------
 epochs: 200
-train_batch_size: 256
-eval_batch_size: 256
-learning_rate: 0.001
+# batch=2048 chosen after observing 0.46 / 23.7 GB GPU usage at batch=256.
+# RTX 3090 24GB has comfortable headroom for >=2048. Throughput scales
+# roughly 3-4x (compute-bound) at this size.
+train_batch_size: 2048
+eval_batch_size: 2048
+# LR scaled by sqrt(batch_ratio) = sqrt(8) ~= 2.83. We use 2x (conservative)
+# to reduce divergence risk; if epoch 1-2 loss looks fine we could push higher
+# in a follow-up ablation.
+learning_rate: 0.002
 stopping_step: 10              # early stop after N epochs of no val NDCG@10 gain
 eval_step: 1
 learner: adam
