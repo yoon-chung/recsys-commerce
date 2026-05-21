@@ -50,24 +50,48 @@ python run.py --k-const 30 --no-submission   # k_const ablation, 점수만 확�
 python run.py --k-const 100 --no-submission
 ```
 
-## 메트릭 (실행 후 작성)
+## 메트릭 (2026-05-21 실행 완료)
 
-| 모델 | NDCG@10 | recall@10 | NDCG 대비 |
-|---|---:|---:|---:|
-| exp_000 ALS | 0.1838 | 0.2558 | — |
-| exp_001 EASE | 0.1848 | 0.2909 | +0.5% vs ALS |
-| **RRF (k=60)** | TBD | TBD | — |
+| 모델 | NDCG@10 | recall@10 |
+|---|---:|---:|
+| exp_000 ALS | 0.18376 | 0.25578 |
+| exp_001 EASE | 0.18476 | 0.29089 |
+| **RRF (k=60)** | **0.17253** | **0.26243** |
 
-**판정 기준**:
-- fused NDCG@10 > max(ALS, EASE) → RRF 파이프라인 성공, 5개 모델 확장 시 lift 기대
-- fused NDCG@10 < min(ALS, EASE) → 두 모델 시그널이 정반대 (불일치) → 가설 재검토 (이론적으로 잘 안 일어남)
-- fused 가 한쪽보다는 좋고 다른 쪽보다는 나쁨 → k_const ablation 가치
+**Lift**:
+- fused NDCG vs ALS: **−0.01123** (−6.1%)
+- fused NDCG vs EASE: **−0.01223** (−6.6%)
+- fused recall vs EASE: **−0.02847** (−9.8%)
+- fused recall vs ALS: +0.00665 (+2.6%) — ALS recall 만 살짝 보충
+
+→ **둘 다보다 더 나빠진 negative result**. 판정 기준 중 "fused NDCG < min" 케이스에 해당.
+
+## 해석 — 왜 떨어졌나
+
+**근본 원인은 다양성 부족 + 한 모델 dominance**:
+
+1. **EASE 가 ALS 를 거의 dominate** — NDCG 비등(+0.5%) 인데 recall 은 EASE 가 **+13.7%**. EASE 가 잡는 정답 중 ALS 가 못 잡는 게 많고 반대는 적다는 뜻. 약한 ALS 시그널을 동등 가중치로 섞으면 noise 추가.
+
+2. **두 모델 같은 family** — ALS (MF factor) 와 EASE (item-item) 가 다른 알고리즘이지만 **둘 다 implicit-feedback collaborative**. 같은 view/cart/purchase 데이터로 비슷한 시그널을 약간 다른 각도로 봄. 가설은 "다른 family → 다양성" 이었지만, 실제 시그널 다양성은 우리가 기대한 것보다 작음.
+
+3. **k_const=60 이 top-50 에선 평탄** — 1/(60+1) vs 1/(60+50) = 1/61 vs 1/110, ratio 1.8 배. rank 신호 약해서 두 모델 합의 (both ranked high) 효과보다 individual top-rank 정답이 평균화로 밀려나는 손실이 큼.
+
+4. **NDCG vs recall 분리 관찰** — recall 은 ALS 대비 살짝 오름 (+2.6%) 인데 NDCG 는 큰 폭 하락. 의미: RRF 가 더 다양한 정답 set 을 잡긴 하지만, 그 정답들을 top 으로 끌어올리지 못함. → fusion 으로 후보 set 다양화 효과는 약하게나마 있음.
+
+## 학습 가치
+
+negative result 지만 Week 1 plan 검증 측면에서 **유의미한 결과**:
+- **다음 모델은 family-diverse 가 핵심** — Week 1 plan 의 BSARec (sequential, user-history 시간), DiffRec (generative), LightGCN (graph) 가 단순 더 많은 CF 대비 ensemble lift 가능성 큼
+- 5 개 모델 모두 합친 ensemble 에서 **per-model weight + k_const tuning 필요**할 가능성 — 단순 RRF 가 항상 win 하지 않음을 데이터로 확인
+- 포트폴리오 스토리: *"단순 RRF 가 작동 안 한 negative case 를 발견 → family diversity 가설 검증 후 sequential/content/graph 모델로 다양성 확보"*
 
 ## 다음 액션
 
-- 결과 OK → Week 1 Day 2-3 exp_002 BSARec 진입
-- ALS+EASE 만으로 ALS 단독 lift 가 의미 있으면 **submission 제출 검토** (현재 동점 시 제출 횟수 규정 우려, calibration ratio 안정 시도)
-- 후속 모델 추가될 때마다 `ensemble_vN_<list>/` 폴더로 누적 (`_v2`, `_v3` …)
+- ✅ ALS+EASE RRF 실험 완료 (단순 fusion 한계 확인)
+- ❌ submission 제출 안 함 (둘 다보다 나쁨)
+- **Week 1 Day 2-3 → exp_002 BSARec** (sequential family, ensemble 다양성 핵심)
+- exp_002 끝나면 `ensemble_v2_als_ease_bsarec/` 으로 확장. k_const ablation + weighted RRF 도 그때 같이 시도
+- 후속 모델 추가될 때마다 `ensemble_vN_<list>/` 폴더로 누적
 
 ## 참고
 

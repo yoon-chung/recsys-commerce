@@ -62,19 +62,34 @@ python inference.py
 - `output.csv` — 제출 파일 (638,257 × 10) `.gitignored`
 - wandb artifact: B + predictions
 
-## 결과 (학습 후 작성)
+## 결과 (2026-05-21 학습 완료)
 
-| 메트릭 | 값 | 비교 |
-|---|---:|---|
-| 자체 val NDCG@10 | TBD | exp_000 ALS 0.1838 |
-| 자체 val recall@10 | TBD | exp_000 ALS 0.2558 |
-| 공식 public NDCG@10 | (제출 안 함 — calibration 안정 후 결정) | — |
+| 메트릭 | 값 | exp_000 ALS | 차이 |
+|---|---:|---:|---:|
+| 자체 val NDCG@10 | **0.1848** | 0.1838 | +0.5% |
+| 자체 val recall@10 | **0.2909** | 0.2558 | **+13.7%** |
+| 공식 public NDCG@10 | (제출 안 함) | 0.0791 | — |
+
+**소요 시간** (서버 RTX 3090, but EASE는 CPU only): 학습 ~4.7분 (Cholesky factor 38s + cho_solve 162s), 추론 8.6분 (628k user × 5k batch × 128 batch)
+
+**B 행렬 통계** (λ=200): max=2.07, p99=4.9e-3, p50=6.4e-5 — λ 적절 (발산도 over-smoothing도 없음). ablation 가치 작음.
+
+**해석**:
+- NDCG 비등 + recall 큰 차이 → EASE는 정답을 top-10 안에 **더 자주** 잡지만 순위는 ALS와 비슷한 위치에 둠. item-item 시그널이 이 데이터에서 강함
+- public 추정 (exp_000 calibration ratio 2.32): 0.1848 / 2.32 ≈ **0.0797**, ALS 0.0791과 사실상 동일
+
+## ensemble_v1_als_ease 결과 (예상과 다름)
+
+[ensemble_v1_als_ease/README.md](../ensemble_v1_als_ease/README.md) — RRF (k=60) 단순 fusion 결과:
+- fused NDCG@10 = **0.1725** (vs ALS -0.011, vs EASE -0.012)
+- fused recall@10 = 0.2624 (vs EASE -0.028)
+- **두 모델 다 같은 CF family 라 다양성 부족** + EASE 가 ALS 를 거의 dominate → RRF 가 noise 추가. 다음 모델은 family-diverse (sequential / content) 가 더 가치 큼.
 
 ## 다음 액션
 
-- 결과 측정 후 ALS 와 RRF 결합 시 lift 확인 (단순 평균 점수 비교)
-- `reg_lambda` ablation 시간 여유 시 시도 (50 / 200 / 500 / 1000)
-- Week 1 Day 2-3 → exp_002 BSARec (paper-to-code port)
+- ✅ ALS RRF 비교 완료 (negative result, family 다양성 학습)
+- `reg_lambda` ablation — B stats 양호해서 우선순위 낮음
+- **Week 1 Day 2-3 → exp_002 BSARec** (sequential, user-history 시간 시그널 → CF 와 진짜로 다른 family)
 
 ## 참고
 
