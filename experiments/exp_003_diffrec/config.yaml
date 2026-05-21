@@ -1,0 +1,91 @@
+# exp_003_diffrec -- DiffRec (SIGIR 2023, Wang et al.)
+#
+# Diffusion-based generative recommender. Forward: add Gaussian noise to user
+# interaction vector x_0 -> x_T. Reverse: parameterized DNN denoises x_T -> x_0.
+# Trained to recover x_0; at inference, predicted x_0 gives scores per item.
+#
+# Week 1 Day 4-5 -- diffusion paradigm for 4-family diversity vs CF (ALS/EASE)
+# and sequential (BSARec). RecBole has DiffRec built-in -- minimal porting.
+
+# ---- Data (reuse exp_002 pattern) ----------------------------------------
+data_path: ./data
+dataset: cy_commerce
+USER_ID_FIELD: user_id
+ITEM_ID_FIELD: item_id
+TIME_FIELD: timestamp
+load_col:
+  inter: [user_id, item_id, timestamp]
+NEG_PREFIX: neg_
+
+# ---- DiffRec diffusion hyperparameters -----------------------------------
+# Paper defaults (close to RecBole's, tuned for MovieLens / Beauty etc.)
+noise_schedule: linear            # alternatives: cosine, const, no-schedule
+noise_scale: 0.001                # scales beta_t
+noise_min: 0.0005                 # beta_1
+noise_max: 0.005                  # beta_T
+steps: 5                          # T (number of diffusion steps; small for recsys)
+mean_type: x0                     # predict x_0 (vs predict noise epsilon)
+reweight: true                    # per-step loss reweighting
+beta_fixed: true                  # don't learn beta schedule
+history_num_per_term: 10          # for adaptive timestep sampler
+sampling_noise: false             # deterministic reverse at inference
+sampling_steps: 0                 # 0 = use full denoising chain at infer
+w_max: 1
+w_min: 0.1
+
+# ---- DNN architecture ----------------------------------------------------
+# DNN input dim = n_items (29.5k), output dim = n_items.
+# dims_dnn is the intermediate hidden layer(s).
+# embedding_size = timestep embedding dim (NOT item embedding -- DiffRec has none)
+dims_dnn: [300]
+embedding_size: 10
+mlp_act_func: tanh
+time-aware: false                 # set true for T-DiffRec variant
+
+# ---- Training -------------------------------------------------------------
+epochs: 200
+train_batch_size: 2048
+eval_batch_size: 2048
+learning_rate: 0.001
+stopping_step: 10
+eval_step: 1
+learner: adam
+train_neg_sample_args: ~          # DiffRec doesn't need negative sampling
+weight_decay: 0.0
+
+# ---- RecBole eval (early stopping only) ----------------------------------
+# DiffRec is a general_recommender -- uses ratio split, not leave-one-out.
+metrics: [NDCG, Recall, MRR, Hit]
+topk: [10]
+valid_metric: NDCG@10
+eval_args:
+  split:
+    RS: [0.8, 0.1, 0.1]
+  group_by: user
+  order: TO
+  mode: full
+
+# ---- Misc -----------------------------------------------------------------
+seed: 42
+reproducibility: true
+device: cuda
+gpu_id: 0
+show_progress: true
+checkpoint_dir: ./saved
+save_dataset: false
+log_wandb: false
+
+# ---- Our own wandb (read by train.py) ------------------------------------
+wandb_entity: yooni0125-
+wandb_project: cy-commerce-recsys
+run_name: exp_003_diffrec
+
+# ---- Self-val + inference (read by inference.py) -------------------------
+train_data: /root/data/train.parquet
+sample_submission: /root/data/sample_submission.csv
+val_days: 7
+gt_event_types: [purchase]
+ease_saved: ../exp_001_ease/saved
+top_n: 50
+items_per_user: 10
+inference_batch_size: 1024
