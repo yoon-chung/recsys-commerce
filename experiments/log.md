@@ -32,6 +32,8 @@
 | **exp_002** | **BSARec (4m)** | **sequential** | **0.2391** | **0.3195** | **0.0943** | **DONE** |
 | ensemble_v2 (equal) | ALS+EASE+BSARec RRF | fusion | 0.2067 | 0.3207 | (제출 X) | DONE (negative −0.032 vs BSARec) |
 | ensemble_v2 (w 1:1:2) | weighted RRF (BSARec 2x) | fusion | 0.2031 | 0.3068 | (제출 X) | DONE (negative −0.036, **worse than equal**) |
+| exp_002c | BSARec (2w) | sequential | TBD | TBD | — | QUEUED |
+| exp_002d | BSARec (1w) | sequential | TBD | TBD | — | QUEUED |
 | exp_002b | BSARec (4w) | sequential | TBD | TBD | — | QUEUED |
 | exp_003 | DiffRec | diffusion | TBD | TBD | — | QUEUED |
 | (예정) | LightGCN | graph | — | — | — | Week 1 Day 6 |
