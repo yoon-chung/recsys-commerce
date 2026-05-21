@@ -212,6 +212,48 @@ def recall_at_k_from_df(
     return recall_at_k(predicted, ground_truth, k=k)
 
 
+def evaluate_val_slices(
+    pred_df: pd.DataFrame,
+    val_slices: dict,
+    k: int = 10,
+) -> dict:
+    """Compute NDCG@k and recall@k on each named sub-val slice.
+
+    Used together with `core.validation.build_val_slices` to diagnose
+    spike contamination -- e.g. compare `full` vs `no_spike` NDCG to see
+    how much the Feb 27-29 spike inflates the metric vs a normal week.
+
+    Args:
+        pred_df: Top-N predictions (user_id, item_id, rank or score).
+        val_slices: {name: gt_df} as produced by build_val_slices. Slices
+            with zero rows are skipped (returned with NaN metrics).
+        k: Cutoff (default 10).
+
+    Returns:
+        {name: {"ndcg": float, "recall": float, "n_users": int,
+                "n_rows": int}}.
+    """
+    out = {}
+    for name, gt_df in val_slices.items():
+        n_users = int(gt_df["user_id"].nunique()) if len(gt_df) else 0
+        n_rows = int(len(gt_df))
+        if n_users == 0:
+            out[name] = {
+                "ndcg": float("nan"),
+                "recall": float("nan"),
+                "n_users": 0,
+                "n_rows": 0,
+            }
+            continue
+        out[name] = {
+            "ndcg": ndcg_at_k_from_df(pred_df, gt_df, k=k),
+            "recall": recall_at_k_from_df(pred_df, gt_df, k=k),
+            "n_users": n_users,
+            "n_rows": n_rows,
+        }
+    return out
+
+
 if __name__ == "__main__":
     import math
 

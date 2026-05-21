@@ -173,6 +173,85 @@ def leave_one_out_split(
     return train_df, val_gt_df
 
 
+def slice_val_by_date(
+    val_gt_df: pd.DataFrame,
+    start_date: str | pd.Timestamp | None = None,
+    end_date: str | pd.Timestamp | None = None,
+) -> pd.DataFrame:
+    """Return rows of `val_gt_df` whose event_time falls in [start, end).
+
+    Used to diagnose spike contamination of the validation set. Our val
+    window (Feb 23-29) contains a Feb 27-29 purchase spike that holds an
+    outsized share of all val purchases; the self-val/public calibration
+    ratio (~2.3-2.5) suggests this spike is inflating self-val relative
+    to the actual test distribution (Mar 1-7).
+
+    Slicing the val_gt by date lets us compute three NDCG variants
+    (`full`, `no_spike`, `spike_only`) from the same predictions, with
+    no model-side changes.
+
+    Args:
+        val_gt_df: Validation ground-truth events with an `event_time`
+            column (string in competition format or already-datetime).
+        start_date: Inclusive lower bound. None means -inf.
+        end_date: Exclusive upper bound. None means +inf.
+
+    Returns:
+        Filtered DataFrame (copy).
+
+    Raises:
+        ValueError: if event_time column is missing.
+    """
+    if "event_time" not in val_gt_df.columns:
+        raise ValueError("val_gt_df missing 'event_time' column")
+    times = _ensure_datetime(val_gt_df["event_time"])
+    mask = pd.Series(True, index=val_gt_df.index)
+    if start_date is not None:
+        mask &= times >= pd.Timestamp(start_date)
+    if end_date is not None:
+        mask &= times < pd.Timestamp(end_date)
+    return val_gt_df.loc[mask].copy()
+
+
+# Default sub-val windows for spike-contamination diagnosis.
+# Boundaries chosen from EDA: the Feb 27-29 spike holds the bulk of
+# val-window purchases; everything Feb 23-26 is the "normal-week" baseline
+# that we expect to better predict Mar 1-7 (the actual test target).
+DEFAULT_VAL_WINDOWS: dict = {
+    "full": (None, None),                       # Feb 23-29 (whole 7d window)
+    "no_spike": (None, "2020-02-27"),           # Feb 23-26 (excludes spike)
+    "spike_only": ("2020-02-27", None),         # Feb 27-29 (the spike days)
+}
+
+
+def build_val_slices(
+    val_gt_df: pd.DataFrame,
+    windows: dict | None = None,
+) -> dict:
+    """Return {name: filtered_val_gt_df} for each window.
+
+    Args:
+        val_gt_df: Source val_gt (must have event_time column).
+        windows: {name: (start, end)} mapping. None -> DEFAULT_VAL_WINDOWS.
+
+    Returns:
+        dict[str, pd.DataFrame]. Empty slices are kept (the caller decides
+        whether to skip them).
+    """
+    if windows is None:
+        windows = DEFAULT_VAL_WINDOWS
+    out = {}
+    for name, (start, end) in windows.items():
+        out[name] = slice_val_by_date(val_gt_df, start, end)
+        logger.info(
+            "  val slice %-12s : %s rows, %s users",
+            name,
+            f"{len(out[name]):,}",
+            f"{out[name]['user_id'].nunique():,}",
+        )
+    return out
+
+
 def get_eval_users(val_gt_df: pd.DataFrame, train_df: pd.DataFrame) -> set:
     """Return the set of users that should be evaluated.
 
