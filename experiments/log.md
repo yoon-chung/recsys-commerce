@@ -30,6 +30,8 @@
 | exp_001 | EASE | item-item | 0.1848 | 0.2909 | (제출 X) | DONE |
 | ensemble_v1 | ALS+EASE RRF | fusion | 0.1725 | 0.2624 | (제출 X) | DONE (negative) |
 | **exp_002** | **BSARec (4m)** | **sequential** | **0.2391** | **0.3195** | **0.0943** | **DONE** |
+| ensemble_v2 (equal) | ALS+EASE+BSARec RRF | fusion | 0.2067 | 0.3207 | (제출 X) | DONE (negative −0.032 vs BSARec) |
+| ensemble_v2 (w 1:1:2) | weighted RRF (BSARec 2x) | fusion | TBD | TBD | — | QUEUED |
 | exp_002b | BSARec (4w) | sequential | TBD | TBD | — | QUEUED |
 | exp_003 | DiffRec | diffusion | TBD | TBD | — | QUEUED |
 | (예정) | LightGCN | graph | — | — | — | Week 1 Day 6 |
@@ -300,7 +302,7 @@ nohup python inference.py > inference.log 2>&1 & disown   # ~5min
 
 ---
 
-## ensemble_v2_als_ease_bsarec — QUEUED
+## ensemble_v2_als_ease_bsarec — DONE 2026-05-21 (negative; weighted retry 진행 중)
 
 [code: ./ensemble_v2_als_ease_bsarec/](./ensemble_v2_als_ease_bsarec/) · 출처: [references §1 RRF](../docs/references.md#1-추천-모델--논문--공식-코드)
 
@@ -310,37 +312,36 @@ nohup python inference.py > inference.log 2>&1 & disown   # ~5min
 - BSARec 단독 self-val 0.2391 > ALS/EASE 0.184 라인 — 후보 set 자체가 다름
 - 3-model RRF 가 BSARec 단독 (best single) 대비 **+** 면 family diversity 가설 검증
 
-### 입력 / 출력
-
-- 입력: 3개 predictions.parquet (ALS / EASE / BSARec) + exp_001 의 val_gt + eval_users + mappings
-- 출력: `fused_predictions.parquet`, `output.csv` (둘 다 .gitignored)
-
-### 실행 (서버)
-
-```bash
-cd /root/workspace/recsys-commerce && git pull
-cd experiments/ensemble_v2_als_ease_bsarec
-python run.py                                # default k=60
-python run.py --k-const 30 --no-submission   # ablation
-```
-
-### 결과 (실행 후 작성)
+### 결과 — equal-weight RRF (k=60)
 
 | 모델 | NDCG@10 | recall@10 |
 |---|---:|---:|
 | exp_000 ALS | 0.18376 | 0.25578 |
 | exp_001 EASE | 0.18476 | 0.29089 |
 | exp_002 BSARec | 0.23910 | 0.31945 |
-| **RRF v2 (k=60)** | TBD | TBD |
+| **RRF v2 equal (k=60)** | **0.20673** | **0.32071** |
+| Δ vs BSARec | **−0.03237** | +0.00126 |
 
-핵심 질문: fused NDCG@10 가 **BSARec 단독 (0.2391) 대비 +** 인가? 또는 -인가?
-- **+** 면 family-diverse RRF 작동 → 제출 가치
-- **-** 면 BSARec 가 너무 dominate → ALS/EASE 가 noise. ensemble 보다 BSARec 단독 + DiffRec 추가가 나음
+→ **negative NDCG (−13.5%), recall 거의 동률**. ensemble_v1 과 다른 양상이지만 결국 negative.
+
+### 진단
+
+- BSARec 가 NDCG 에서 압도적 (+30% vs ALS/EASE). equal-weight RRF 는 ALS/EASE 가 top rank 희석.
+- recall +0.001 → fusion 이 후보 다양성은 살짝 늘림. 하지만 ordering 망가뜨림.
+- ensemble_v1 (CF-only) negative = family 동질성. v2 (3-family) negative = **strength 불균형**. RRF 동등 가중 가정 위반.
+
+### 후속: weighted RRF 시도 (한 번)
+
+전략 pivot 정신상 lift 추구는 deprioritize 지만, "negative 두 번 그냥 끝" 보다는 weight 한 번 시도 후 진단하는 게 portfolio talking point 강화.
+
+- `core/ensemble.py` 에 `weights` 파라미터 추가 (default None = equal, backward-compat).
+- 첫 시도: **BSARec 2x** (ALS:EASE:BSARec = 1:1:2). 근거: NDCG 단독 0.239 vs 0.184 ≈ 1.3배지만 ordering 영향 키우려면 살짝 강하게.
+- 실행: `python run.py --bsarec-weight 2.0` → `fused_predictions_w1-1-2.parquet`, `output_w1-1-2.csv`.
 
 ### 다음 액션
 
-- v2 lift 있으면 → 제출 + DiffRec/LightGCN 추가 후 v3 (4-5 model RRF)
-- v2 negative 면 → ensemble 접근 한계, 다음 모델 (DiffRec) 진입에 집중
+- weighted (BSARec 2x) 결과 NDCG ≥ BSARec 단독 → 제출. + DiffRec 추가 시 v3 의미 있음
+- 여전히 negative → ensemble 접근 사실상 dead. DiffRec/Week 2 service 로 전환. [[project-pivot-to-system-llm]] 정신 그대로.
 
 ---
 

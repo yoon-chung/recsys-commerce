@@ -80,12 +80,23 @@ def main() -> None:
     parser.add_argument("--k-const", type=int, default=60, help="RRF constant")
     parser.add_argument("--top-n", type=int, default=50)
     parser.add_argument("--items-per-user", type=int, default=10)
+    parser.add_argument("--als-weight", type=float, default=1.0)
+    parser.add_argument("--ease-weight", type=float, default=1.0)
+    parser.add_argument("--bsarec-weight", type=float, default=2.0,
+                        help="BSARec NDCG ~30% above ALS/EASE -> default 2x weight")
+    parser.add_argument("--tag", default=None,
+                        help="suffix for output artifacts (default: w<als>-<ease>-<bsarec>)")
     parser.add_argument("--no-submission", dest="make_submission", action="store_false")
     parser.add_argument("--no-wandb", dest="use_wandb", action="store_false")
     parser.add_argument("--wandb-entity", default="yooni0125-")
     parser.add_argument("--wandb-project", default="cy-commerce-recsys")
-    parser.add_argument("--run-name", default="ensemble_v2_als_ease_bsarec")
+    parser.add_argument("--run-name", default=None,
+                        help="default: ensemble_v2_w<als>-<ease>-<bsarec>")
     args = parser.parse_args()
+
+    weights = [args.als_weight, args.ease_weight, args.bsarec_weight]
+    tag = args.tag or f"w{args.als_weight:g}-{args.ease_weight:g}-{args.bsarec_weight:g}"
+    run_name = args.run_name or f"ensemble_v2_{tag}"
 
     logging.basicConfig(
         level=logging.INFO,
@@ -131,13 +142,15 @@ def main() -> None:
     logger.info("  EASE   NDCG@10=%.6f  recall@10=%.6f", ease_ndcg10, ease_recall10)
     logger.info("  BSARec NDCG@10=%.6f  recall@10=%.6f", bsarec_ndcg10, bsarec_recall10)
 
-    # ---- 4. RRF fuse (3-model) -------------------------------------------
-    logger.info("RRF combine 3-model: k_const=%d top_n=%d", args.k_const, args.top_n)
+    # ---- 4. RRF fuse (3-model, optional weights) -------------------------
+    logger.info("RRF combine 3-model: k_const=%d top_n=%d weights=ALS:%g EASE:%g BSARec:%g",
+                args.k_const, args.top_n, *weights)
     t0 = time.time()
     fused = rrf_combine(
         [pred_als, pred_ease, pred_bsarec],
         k_const=args.k_const,
         top_n=args.top_n,
+        weights=weights,
     )
     logger.info("  fused %s rows, %s users, took %.1fs",
                 f"{len(fused):,}", f"{fused['user_id'].nunique():,}", time.time() - t0)
@@ -158,7 +171,7 @@ def main() -> None:
     logger.info("    BSARec NDCG delta %+.6f", fused_ndcg10 - bsarec_ndcg10)
 
     # ---- 6. Write fused parquet ------------------------------------------
-    fused_path = here / "fused_predictions.parquet"
+    fused_path = here / f"fused_predictions_{tag}.parquet"
     fused.to_parquet(fused_path)
     logger.info("wrote %s (%s rows)", fused_path, f"{len(fused):,}")
 
@@ -174,7 +187,7 @@ def main() -> None:
         )
         popularity = compute_popularity(train_df, top_n=args.top_n)
 
-        output_csv = here / "output.csv"
+        output_csv = here / f"output_{tag}.csv"
         predictions_to_submission(
             pred_path=str(fused_path),
             output_csv=str(output_csv),
@@ -200,11 +213,14 @@ def main() -> None:
             run = wandb.init(
                 entity=args.wandb_entity,
                 project=args.wandb_project,
-                name=args.run_name,
+                name=run_name,
                 config={
                     "k_const": args.k_const,
                     "top_n": args.top_n,
                     "items_per_user": args.items_per_user,
+                    "als_weight": args.als_weight,
+                    "ease_weight": args.ease_weight,
+                    "bsarec_weight": args.bsarec_weight,
                     "components": [
                         "exp_000_als_baseline",
                         "exp_001_ease",

@@ -25,6 +25,7 @@ def rrf_combine(
     pred_dfs: Sequence[pd.DataFrame],
     k_const: int = 60,
     top_n: int = 50,
+    weights: Sequence[float] | None = None,
 ) -> pd.DataFrame:
     """Reciprocal Rank Fusion across multiple ranked-list models.
 
@@ -35,6 +36,9 @@ def rrf_combine(
             items contribute 0 to the fused score.
         k_const: RRF constant. Larger -> ranks matter less. Default 60.
         top_n: Number of items to keep per user in the output.
+        weights: Optional per-model weights, same length as pred_dfs.
+            Each model's RRF contribution is multiplied by its weight.
+            If None, equal weighting (classic RRF).
 
     Returns:
         DataFrame with columns (user_id, item_id, score, rank), sorted by
@@ -49,14 +53,21 @@ def rrf_combine(
             if col not in df.columns:
                 raise ValueError(f"pred_dfs[{i}] missing column: {col}")
 
+    if weights is None:
+        weights = [1.0] * len(pred_dfs)
+    elif len(weights) != len(pred_dfs):
+        raise ValueError(
+            f"weights length {len(weights)} != pred_dfs length {len(pred_dfs)}"
+        )
+
     parts = []
-    for df in pred_dfs:
+    for df, w in zip(pred_dfs, weights):
         parts.append(
             pd.DataFrame(
                 {
                     "user_id": df["user_id"].to_numpy(),
                     "item_id": df["item_id"].to_numpy(),
-                    "_rrf": 1.0 / (k_const + df["rank"].to_numpy(dtype=np.float64)),
+                    "_rrf": float(w) / (k_const + df["rank"].to_numpy(dtype=np.float64)),
                 }
             )
         )
