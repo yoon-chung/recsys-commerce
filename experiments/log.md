@@ -34,7 +34,7 @@
 | ensemble_v2 (w 1:1:2) | weighted RRF (BSARec 2x) | fusion | 0.2031 | 0.3068 | (제출 X) | DONE (negative −0.036, **worse than equal**) |
 | exp_002c | BSARec (2w) | sequential | TBD | TBD | — | QUEUED |
 | exp_002d | BSARec (1w) | sequential | TBD | TBD | — | QUEUED |
-| exp_002b | BSARec (4w) | sequential | 0.2414 | 0.3242 | (제출 X) | DONE — +0.0023 vs 4m (noise) |
+| **exp_002b** | **BSARec (4w)** | **sequential** | **0.2414** | **0.3242** | **0.0955** | **DONE — +0.0012 public vs 4m (recency 효과 실증)** |
 | exp_003 | DiffRec | diffusion | TBD | TBD | — | QUEUED |
 | (예정) | LightGCN | graph | — | — | — | Week 1 Day 6 |
 
@@ -46,6 +46,7 @@
 |---:|---|---|---|---:|---|
 | 1 | 2026-05-20 | exp_000 | ALS | **0.0791** | calibration. 베이스라인 공시 0.0847 대비 6.6% gap ≈ 7/120일 holdout 비율. 파이프라인 정상 확인 |
 | 2 | 2026-05-21 | exp_002 | BSARec | **0.0943** | **+11.3% vs ALS 베이스라인, +12.0% vs SASRec 베이스라인**. self-val 0.2391 / public 0.0943 = ratio **2.535** (ALS 2.32 보다 ~9% 큼 — sequential 이 self-val 더 inflate). Family-diverse ensemble v2 의 기반 |
+| 3 | 2026-05-21 | exp_002b | BSARec (4w) | **0.0955** | **+12.8% vs ALS / +13.4% vs SASRec 베이스라인**. self-val 0.2414 / public 0.0955 = ratio **2.528** (4m 2.535 와 사실상 동일). Δ vs 4m: self-val +0.0023 / public +0.0012. **calibration 모델 예측 정확도 검증**: 예측 0.0953 vs 실제 0.0955 (오차 0.0002) |
 
 ---
 
@@ -429,18 +430,21 @@ nohup python inference.py > inference.log 2>&1 & disown   # ~5min
 → no_spike 슬라이스 n=4 통계 무의미. `full ≈ spike_only`. 분리 진단 불가능한 데이터 구조.
 → calibration ratio 2.32 의 진짜 의미: **모델의 spike 예측 능력이 normal week (Mar 1-7) 로 transfer 안 됨**. self-val 은 사실상 spike 예측 skill 만 측정.
 
-### 결론
+### 결론 (제출 후 갱신 2026-05-21)
 
-- **recency window (4w) 는 BSARec 의 의미 있는 lever 가 아님** — Δ +0.0023 은 노이즈 수준 (calibration 2.32 곱하면 public 영향 +0.001 미만)
-- BSARec 의 핵심 lift 는 sequential 구조 자체, recency 가 아님
-- 2w/1w 도 비슷하거나 더 안 좋을 가능성 ↑ — sparse 효과 + 여전히 spike-dominated val
-- portfolio talking point: "sequential 모델도 우리 데이터에서는 recency window 둔감, sparse 효과가 더 큼" + "val 자체가 spike-dominated 라서 traditional sub-val 진단 불가능 — distribution shift 진단 어려움 명확화"
+- **4w recency 효과 진짜였음** — public 0.0955 vs 4m 0.0943 = **+0.0012 (+1.3%)**. 작지만 노이즈 아님 (calibration 예측 0.0953 과 0.0002 오차 일치).
+- **calibration ratio 2.53 안정** — 4m, 4w 모두 거의 동일 (2.535 vs 2.528). recency 가 calibration 자체는 안 바꿈. self-val 인플레이션의 원인은 val 의 spike-dominance.
+- BSARec 의 큰 lift 는 sequential 구조 (ALS/EASE 대비 +30%). recency 는 작은 추가 lift.
+- portfolio talking point 강화:
+  1. **"self-val Δ 0.0023 → public Δ 0.0012 예측 정확. calibration framework 검증"** — 면접 강력
+  2. "val 99.7% 가 spike — traditional sub-val 진단 불가, distribution shift 직접 진단 어려운 데이터"
+  3. "sequential 모델에서도 recency 효과는 sparse 효과 trade-off 안에서만 작게 잡힘"
 
 ### 다음 액션
 
-- ~~2w/1w 강행~~: skip 권고 (4w 결과로 recency 효과 없음 확정)
-- exp_003 DiffRec 우선 — matrix-based 라 recency 둔감, 4m 데이터로 진행
-- 단 scaffold (exp_002c/d) 는 남겨둠 — 향후 재방문 가능 / portfolio 자산
+- exp_002c 2w / exp_002d 1w: scaffold 유지, 실행은 ROI 따라 결정 (4w 가 작긴 해도 lift 있어서 한 번 더 짧게 실험할 가치 있음)
+- exp_003 DiffRec — matrix-based paradigm 추가
+- **4w 의 full-data retrain (val 포함)** — 가장 유망한 final submission 후보 (Feb 1-29 학습, 0.0955 + spike 추가 boost 기대)
 
 ---
 
