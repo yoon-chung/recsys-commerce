@@ -1,17 +1,13 @@
-"""exp_002_bsarec / data_prep.py -- build RecBole atomic dataset from train.parquet.
+"""exp_002b_bsarec_4w / data_prep.py -- build 4-week RecBole atomic dataset.
 
-Produces ./data/cy_commerce/cy_commerce.inter, a TSV with columns:
-    user_id:token    item_id:token    timestamp:float
-
-Uses our standard time-based split: only the train portion (event_time <
-cutoff) is exposed to RecBole. RecBole does its own internal leave-one-out
-eval split off this for early-stopping; our official self-val (last 7 days
-purchases) is computed outside RecBole in inference.py.
+Same as exp_002_bsarec/data_prep.py except `--last-days` defaults to 28
+(last 4 weeks, Feb 1-29), and output goes to ./data/cy_commerce_4w/.
 
 This file is gitignored via the global `**/data/` pattern.
 
 Usage:
-    python data_prep.py
+    python data_prep.py                       # default: last 28 days
+    python data_prep.py --last-days 14        # narrower ablation
 """
 
 from __future__ import annotations
@@ -47,12 +43,12 @@ def main() -> None:
     parser.add_argument(
         "--last-days",
         type=int,
-        default=None,
-        help="if set, keep only the last N days of train_df (recency-only ablation). "
-             "default None = full 4 months. Example: 28 -> Feb 1-29.",
+        default=28,
+        help="keep only the last N days of train_df (4-week recency window). "
+             "default 28 = Feb 1-29.",
     )
-    parser.add_argument("--out-dir", default=str(HERE / "data" / "cy_commerce"))
-    parser.add_argument("--dataset-name", default="cy_commerce")
+    parser.add_argument("--out-dir", default=str(HERE / "data" / "cy_commerce_4w"))
+    parser.add_argument("--dataset-name", default="cy_commerce_4w")
     args = parser.parse_args()
 
     logging.basicConfig(
