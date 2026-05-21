@@ -17,6 +17,14 @@ load_col:
   inter: [user_id, item_id, timestamp]
 NEG_PREFIX: neg_
 
+# ---- User/Item filtering -- prevents DiffRec OOM (first attempt died at
+# data-loader construction with "Max user history = 89.49% of total" warning
+# = one user has ~26k items). DiffRec uses dense n_items per-user vectors
+# (623k x 29k x 4 = ~73GB), so we must filter hyperactive bot-like users.
+# Filtered users still get predictions via popularity fallback in inference.py.
+user_inter_num_interval: "[5,500)"   # keep users with 5..499 interactions
+item_inter_num_interval: "[5,inf)"   # keep items with >=5 interactions (drop tail)
+
 # ---- DiffRec diffusion hyperparameters -----------------------------------
 # Paper defaults (close to RecBole's, tuned for MovieLens / Beauty etc.)
 noise_schedule: linear            # alternatives: cosine, const, no-schedule
@@ -44,8 +52,8 @@ time-aware: false                 # set true for T-DiffRec variant
 
 # ---- Training -------------------------------------------------------------
 epochs: 200
-train_batch_size: 2048
-eval_batch_size: 2048
+train_batch_size: 1024   # halved from 2048 to ease memory pressure
+eval_batch_size: 1024    # halved from 2048
 learning_rate: 0.001
 stopping_step: 10
 eval_step: 1
