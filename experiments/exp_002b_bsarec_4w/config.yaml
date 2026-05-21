@@ -57,8 +57,8 @@ eval_batch_size: 2048
 # to reduce divergence risk; if epoch 1-2 loss looks fine we could push higher
 # in a follow-up ablation.
 learning_rate: 0.002
-stopping_step: 10              # early stop after N epochs of no val NDCG@10 gain
-eval_step: 1
+stopping_step: 5               # halved from exp_002 (10) since eval_step doubles -> same eval count
+eval_step: 2                   # eval every 2 epochs (4w wall time per epoch is short; lighter eval overhead)
 learner: adam
 train_neg_sample_args: ~        # CE loss doesn't need negative sampling
 
@@ -99,4 +99,4 @@ gt_event_types: [purchase]
 ease_saved: ../exp_001_ease/saved   # for val_gt.parquet + eval_users.json reuse
 top_n: 50
 items_per_user: 10
-inference_batch_size: 1024
+inference_batch_size: 4096   # 1024 -> 4096 (RTX 3090 24GB has headroom; 4w inference ~50% faster)
