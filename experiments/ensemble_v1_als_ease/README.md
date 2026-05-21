@@ -95,6 +95,6 @@ negative result 지만 Week 1 plan 검증 측면에서 **유의미한 결과**:
 
 ## 참고
 
-- Cormack, Clarke & Büttcher (2009). *Reciprocal Rank Fusion outperforms Condorcet and individual rank learning methods*. SIGIR.
-- [docs/candidate_models.md §5](../../docs/candidate_models.md) Week 1 5-모델 plan
-- [exp_000_als_baseline/README.md](../exp_000_als_baseline/README.md), [exp_001_ease/README.md](../exp_001_ease/README.md)
+- RRF 논문 + 모델 출처 (ALS / EASE): [docs/references.md §1 + ensemble methods](../../docs/references.md#1-추천-모델--논문--공식-코드)
+- [docs/candidate_models.md §5](../../docs/candidate_models.md) — Week 1 5-모델 plan
+- 입력 실험: [exp_000_als_baseline/README.md](../exp_000_als_baseline/README.md), [exp_001_ease/README.md](../exp_001_ease/README.md)

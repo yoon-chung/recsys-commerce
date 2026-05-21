@@ -72,6 +72,7 @@ disown
 
 ## 참고
 
-- 부모 실험: [exp_002_bsarec](../exp_002_bsarec/README.md)
+- 부모 실험: [exp_002_bsarec](../exp_002_bsarec/README.md) — 모델/논문/코드 출처 동일
+- 모델 출처: [docs/references.md §1 — BSARec row](../../docs/references.md#1-추천-모델--논문--공식-코드)
+- 멘토링 메모: [docs/references.md §4 — 2026-05-21 멘토링](../../docs/references.md#2026-05-21-멘토링--핵심-결정)
 - [docs/eda_findings.md](../../docs/eda_findings.md) — Feb 27-29 spike, sequence 길이 분포
-- 멘토 권고: 2026-05-21 멘토링 — "구매 몰린 짧은 기간으로 축소 학습"

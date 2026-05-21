@@ -102,7 +102,5 @@ disown
 
 ## 참고
 
-- **논문**: Wang, W., Xu, Y., Feng, F., Lin, X., He, X., Chua, T.-S. (2023). "Diffusion Recommender Model." SIGIR 2023.
-- **저자 코드**: https://github.com/YiyanXu/DiffRec (참고만, 우리는 RecBole 빌트인 사용)
-- **RecBole 구현**: https://recbole.io/docs/recbole/recbole.model.general_recommender.diffrec.html
-- [docs/candidate_models.md §5](../../docs/candidate_models.md)
+- 모델 / 논문 / 저자 코드 / RecBole DiffRec docs: [docs/references.md §1 — DiffRec row + §2 RecBole API](../../docs/references.md)
+- [docs/candidate_models.md §5](../../docs/candidate_models.md) — Week 1 plan

@@ -118,8 +118,7 @@ python inference.py 2>&1 | tee inference.log
 
 ## 참고 / Attribution
 
-- **논문**: Shin, Y., Choi, J., Wi, H., Park, N. (2024). "An Attentive Inductive Bias for Sequential Recommendation Beyond the Self-Attention." AAAI 2024.
-- **저자 코드**: https://github.com/yehjin-shin/BSARec (Apache-2.0). `fra.py`의 FrequencyLayer는 저자의 `src/model/bsarec.py`를 PyTorch 표준 LayerNorm 사용으로 minor 수정한 port
-- **RecBole**: https://github.com/RUCAIBox/RecBole — `SequentialRecommender` 베이스, `MultiHeadAttention` + `FeedForward` 재사용
-- [docs/candidate_models.md §5](../../docs/candidate_models.md) Week 1 plan
+- 모델 / 논문 / 저자 코드 / RecBole docs: [docs/references.md §1 — BSARec row + §2 RecBole API](../../docs/references.md)
+- **Attribution**: [fra.py](fra.py) 의 `FrequencyLayer` 는 [yehjin-shin/BSARec](https://github.com/yehjin-shin/BSARec) (Apache-2.0) 의 `src/model/bsarec.py` 를 PyTorch 표준 LayerNorm 사용으로 minor 수정한 port. 파일 docstring 에 attribution 명시
+- [docs/candidate_models.md §5](../../docs/candidate_models.md) — Week 1 plan
 - [docs/eda_findings.md](../../docs/eda_findings.md) — sequence 특성 (CV=4.12, p90=29)

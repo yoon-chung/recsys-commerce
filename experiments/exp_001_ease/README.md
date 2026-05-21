@@ -93,6 +93,6 @@ python inference.py
 
 ## 참고
 
-- Steck, H. (2019). "Embarrassingly Shallow Autoencoders for Sparse Data." WWW 2019.
-- [docs/candidate_models.md §5](../../docs/candidate_models.md) Week 1 plan
-- [docs/eda_findings.md §15](../../docs/eda_findings.md) EDA 결과
+- 모델 / 논문 / 코드 출처: [docs/references.md §1 — EASE row](../../docs/references.md#1-추천-모델--논문--공식-코드)
+- [docs/candidate_models.md §5](../../docs/candidate_models.md) — Week 1 plan
+- [docs/eda_findings.md §15](../../docs/eda_findings.md) — EDA 결과

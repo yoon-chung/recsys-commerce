@@ -103,3 +103,8 @@ python inference.py
 - **exp_001 또는 exp_002 (다음 우선순위)**: sequential 모델 (TiSASRec 또는 BSARec, [docs/candidate_models.md](../../docs/candidate_models.md)) — EDA 강력 권장. ALS 베이스라인 재현 완료했으니 다음 단계 진입 자연스러움. self-val × 1/2.32 ≈ public 기대치로 활용
 - exp_003: two-stage (ALS candidate + LightGBM reranker)
 - exp_NNN: EASE — 30줄 구현, ensemble 다양성 보조 멤버
+
+## 참고
+
+- 모델 / 라이브러리 출처: [docs/references.md §1 — ALS row](../../docs/references.md#1-추천-모델--논문--공식-코드)
+- [docs/candidate_models.md](../../docs/candidate_models.md) — 다음 모델 후보 매트릭스
