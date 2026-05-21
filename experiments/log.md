@@ -31,7 +31,7 @@
 | ensemble_v1 | ALS+EASE RRF | fusion | 0.1725 | 0.2624 | (제출 X) | DONE (negative) |
 | **exp_002** | **BSARec (4m)** | **sequential** | **0.2391** | **0.3195** | **0.0943** | **DONE** |
 | ensemble_v2 (equal) | ALS+EASE+BSARec RRF | fusion | 0.2067 | 0.3207 | (제출 X) | DONE (negative −0.032 vs BSARec) |
-| ensemble_v2 (w 1:1:2) | weighted RRF (BSARec 2x) | fusion | TBD | TBD | — | QUEUED |
+| ensemble_v2 (w 1:1:2) | weighted RRF (BSARec 2x) | fusion | 0.2031 | 0.3068 | (제출 X) | DONE (negative −0.036, **worse than equal**) |
 | exp_002b | BSARec (4w) | sequential | TBD | TBD | — | QUEUED |
 | exp_003 | DiffRec | diffusion | TBD | TBD | — | QUEUED |
 | (예정) | LightGCN | graph | — | — | — | Week 1 Day 6 |
@@ -302,7 +302,7 @@ nohup python inference.py > inference.log 2>&1 & disown   # ~5min
 
 ---
 
-## ensemble_v2_als_ease_bsarec — DONE 2026-05-21 (negative; weighted retry 진행 중)
+## ensemble_v2_als_ease_bsarec — DONE 2026-05-21 (negative, equal + weighted 둘 다)
 
 [code: ./ensemble_v2_als_ease_bsarec/](./ensemble_v2_als_ease_bsarec/) · 출처: [references §1 RRF](../docs/references.md#1-추천-모델--논문--공식-코드)
 
@@ -330,18 +330,39 @@ nohup python inference.py > inference.log 2>&1 & disown   # ~5min
 - recall +0.001 → fusion 이 후보 다양성은 살짝 늘림. 하지만 ordering 망가뜨림.
 - ensemble_v1 (CF-only) negative = family 동질성. v2 (3-family) negative = **strength 불균형**. RRF 동등 가중 가정 위반.
 
-### 후속: weighted RRF 시도 (한 번)
+### 결과 — weighted RRF (BSARec 2x, k=60)
 
-전략 pivot 정신상 lift 추구는 deprioritize 지만, "negative 두 번 그냥 끝" 보다는 weight 한 번 시도 후 진단하는 게 portfolio talking point 강화.
+| 시도 | NDCG@10 | recall@10 | Δ vs BSARec NDCG | Δ vs BSARec recall |
+|---|---:|---:|---:|---:|
+| equal 1:1:1 | 0.20673 | 0.32071 | −0.03237 | +0.00126 |
+| weighted 1:1:**2** | 0.20314 | 0.30679 | **−0.03596** | **−0.01266** |
 
-- `core/ensemble.py` 에 `weights` 파라미터 추가 (default None = equal, backward-compat).
-- 첫 시도: **BSARec 2x** (ALS:EASE:BSARec = 1:1:2). 근거: NDCG 단독 0.239 vs 0.184 ≈ 1.3배지만 ordering 영향 키우려면 살짝 강하게.
-- 실행: `python run.py --bsarec-weight 2.0` → `fused_predictions_w1-1-2.parquet`, `output_w1-1-2.csv`.
+→ **weighted 가 equal 보다 더 나쁨**. recall 까지 떨어짐.
+
+### 진단 (반직관적 결과 분석)
+
+BSARec weight 를 올리면 dominance 가 강화되어야 하는데 왜 떨어졌나?
+
+- RRF `1/(k+rank)` 곡선에서 BSARec rank-1 이 이미 충분히 강함. weight 2x 가 BSARec **맞은 item** 도 ↑ 시키지만 BSARec **틀린 item** 도 ↑ 시킴.
+- equal 에서는 ALS/EASE 가 BSARec false positive 를 살짝 견제. 2x 가 이 견제를 약화 → recall 하락이 그 증거 (ALS/EASE 가 잡던 다른 후보가 사라짐).
+- 즉 **ALS/EASE 는 보완 signal 을 가지긴 하지만, BSARec dominance 를 뒤집을 수준 X**. 어느 방향 weight 도 BSARec 단독 0.2391 을 넘기 어려운 구조.
+
+### 최종 결론: ensemble 접근 dead
+
+- v1 (CF-only) negative = family 동질성
+- v2 equal negative = family 다양화 했지만 strength 불균형
+- v2 weighted negative = dominance 살려도 BSARec false positive 도 같이 amplify
+
+세 번 다른 가설, 모두 negative. 추가 weight sweep ROI 거의 0 (BSARec → ∞ 면 BSARec 단독에 수렴). [[project-pivot-to-system-llm]] 정신 그대로 ensemble 종료.
+
+**Portfolio 관점**: 단순 negative 가 아니라 **structural limitation 을 ablation 으로 진단** 한 결과 — 면접 talking point 로 v1 단독보다 훨씬 강함.
 
 ### 다음 액션
 
-- weighted (BSARec 2x) 결과 NDCG ≥ BSARec 단독 → 제출. + DiffRec 추가 시 v3 의미 있음
-- 여전히 negative → ensemble 접근 사실상 dead. DiffRec/Week 2 service 로 전환. [[project-pivot-to-system-llm]] 정신 그대로.
+ensemble 접고:
+- exp_003 DiffRec (paradigm coverage, 결과 기록만), 또는
+- exp_002b BSARec 4w ablation (멘토 권고), 또는
+- Week 2 service 진입 ([[project-pivot-to-system-llm]] 가장 충실)
 
 ---
 
