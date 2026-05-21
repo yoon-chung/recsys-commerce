@@ -7,11 +7,12 @@
 # ensemble_v1 negative result (ALS + EASE same family).
 
 # ---- Data (RecBole atomic-file conventions) ------------------------------
-# Baseline already converted train.parquet into RecBole format at
-# /root/data/SASRec_dataset/. We reuse it (its tokens are our user/item UUIDs,
-# just retokenized by RecBole to small ints).
-data_path: /root/data
-dataset: SASRec_dataset
+# We build our own atomic dataset via data_prep.py:
+#   data_prep.py -> ./data/cy_commerce/cy_commerce.inter
+# This is independent of the baseline-provided /root/code/ preprocessing
+# (CLAUDE.md: do not copy baseline). The .inter file is gitignored.
+data_path: ./data
+dataset: cy_commerce
 USER_ID_FIELD: user_id
 ITEM_ID_FIELD: item_id
 TIME_FIELD: timestamp

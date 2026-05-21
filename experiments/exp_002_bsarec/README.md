@@ -65,8 +65,9 @@ out       = LayerNorm( dropout(low_pass + (sqrt_beta²) * high_pass) + X )
 
 ## 데이터 흐름
 
-- **학습**: `/root/data/SASRec_dataset/` (베이스라인이 train.parquet → RecBole atomic 변환). user/item UUID가 RecBole 내부 int로 retokenize됨
-- **자체 val** (exp_000/001 비교용): `core/validation.py time_based_split(val_days=7, gt=['purchase'])`로 우리 식 self-val. `eval_users` (928명) 재사용
+- **데이터 준비** (`data_prep.py`): `core/validation.py time_based_split` 으로 train 부분만 잘라 RecBole atomic format (`./data/cy_commerce/cy_commerce.inter`) 으로 변환. 베이스라인 `/root/code/` 의존 0 — 우리 스택만으로 자체 완결
+- **학습**: 우리가 만든 `cy_commerce` dataset. RecBole이 UUID 를 내부 int 로 retokenize
+- **자체 val** (exp_000/001 비교용): `time_based_split(val_days=7, gt=['purchase'])` 로 우리 식 self-val. `eval_users` (928명) 재사용
 - **추론**: 638,257명 전원에 대해 user history (UUID 공간) → RecBole int 매핑 → BSARec forward → top-50 → UUID 역매핑 → predictions.parquet
 - **Cold-start**: 학습 데이터에 sequence 없는 user는 popularity fallback
 
@@ -83,10 +84,13 @@ cd /root/workspace/recsys-commerce && git pull
 
 cd experiments/exp_002_bsarec
 
-# 학습 — wandb backup 포함
+# 0) 데이터 준비 — 최초 1회 (또는 split 정책 변경 시)
+python data_prep.py 2>&1 | tee data_prep.log
+
+# 1) 학습 — wandb backup 포함
 python train.py 2>&1 | tee train.log
 
-# 추론 + 자체 val + submission CSV 생성
+# 2) 추론 + 자체 val + submission CSV 생성
 python inference.py 2>&1 | tee inference.log
 ```
 
