@@ -51,24 +51,28 @@ mlp_act_func: tanh
 time-aware: false                 # set true for T-DiffRec variant
 
 # ---- Training -------------------------------------------------------------
-epochs: 200
+epochs: 50               # cap from 200 -- runaway protection (eval is expensive)
 train_batch_size: 1024   # halved from 2048 to ease memory pressure
-eval_batch_size: 4096    # bumped to 4096 -- eval is the bottleneck, GPU has headroom
+eval_batch_size: 8192    # max GPU headroom -- eval dominates wall time
 learning_rate: 0.001
-stopping_step: 3                  # was 10. with eval_step=5 -> 15-epoch patience
-eval_step: 5                      # was 1. eval every 5 epochs (1.5h/eval -> avg 18min/epoch)
+stopping_step: 2                  # 2 worse evals * eval_step=10 = 20-epoch patience
+eval_step: 10                     # eval every 10 epochs (~5 total evals in 50 cap)
 learner: adam
 train_neg_sample_args: ~          # DiffRec doesn't need negative sampling
 weight_decay: 0.0
 
 # ---- RecBole eval (early stopping only) ----------------------------------
-# DiffRec is a general_recommender -- uses ratio split, not leave-one-out.
-# IMPORTANT: full-ranking eval over ~600k filtered users x 29k items is the
-# bottleneck (~86 min/eval at batch=1024). Mitigations:
-#   - eval_step: 5 -> eval every 5 epochs only (saves 4x)
-#   - eval_batch_size: 4096 (saves another ~4x via larger GPU batches)
-#   - mode: uni500 = sample 500 negatives per user instead of all 29k items
-#     (saves ~60x; loses precision on ranking but enough for early stop)
+# DiffRec is a general_recommender that outputs full ranking by design.
+# `mode: uni{N}` is incompatible -- triggers a shape-mismatch in
+# _neg_sample_batch_eval because the model returns full [batch, n_items]
+# scores instead of per-(u, neg_item) scalars. Stuck with `mode: full`.
+#
+# Full-ranking eval is the bottleneck (~86 min/eval at batch=1024).
+# Mitigations applied:
+#   - eval_step: 10  -> only 5 evals over the 50-epoch cap
+#   - eval_batch_size: 8192 -> 8x larger batches (~11 min/eval expected)
+#   - epochs cap: 50 -> bounds total wall time
+# Net expected: ~1.5h total (31min train + 55min eval).
 metrics: [NDCG, Recall, MRR, Hit]
 topk: [10]
 valid_metric: NDCG@10
@@ -77,7 +81,7 @@ eval_args:
     RS: [0.8, 0.1, 0.1]
   group_by: user
   order: TO
-  mode: uni500
+  mode: full
 
 # ---- Misc -----------------------------------------------------------------
 seed: 42
