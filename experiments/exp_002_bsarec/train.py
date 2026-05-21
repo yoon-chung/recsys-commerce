@@ -56,8 +56,11 @@ def main() -> None:
     saved_dir.mkdir(parents=True, exist_ok=True)
 
     # ---- RecBole config (reads same YAML) --------------------------------
+    # Pass the BSARec CLASS (not string) so RecBole skips get_model() lookup
+    # entirely -- avoids registering BSARec in their package + sidesteps the
+    # lightgbm import inside exlib_recommender/__init__.py.
     config = Config(
-        model="BSARec",
+        model=BSARec,
         config_file_list=[args.config],
         dataset=our_cfg["dataset"],
     )
