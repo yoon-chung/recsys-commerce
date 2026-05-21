@@ -208,7 +208,7 @@ Lift: NDCG vs ALS **−0.011**, vs EASE **−0.012**. recall vs EASE **−0.028*
 ### 다음 액션
 
 - ❌ submission 안 함
-- → [exp_002 BSARec](#exp_002_bsarec--running-2026-05-21) 후 `ensemble_v2_*` 로 확장. k ablation + weighted RRF 함께
+- → [exp_002 BSARec](#exp_002_bsarec--done-2026-05-21) 후 [ensemble_v2_als_ease_bsarec](#ensemble_v2_als_ease_bsarec--queued) 로 확장
 
 ---
 
@@ -297,6 +297,50 @@ nohup python inference.py > inference.log 2>&1 & disown   # ~5min
 - → `ensemble_v2_als_ease_bsarec/` 생성 (3-family RRF lift 측정) — 이제 family diversity 가 진짜라서 v2 가 v1 같은 negative 결과 나올 가능성 낮음
 - α/c ablation 우선순위 낮음 (이미 큰 lift 확보, marginal sweep 으로 갈 가치 작음)
 - 병행: [exp_002b](#exp_002b_bsarec_4w--queued) recency window ablation (이제 더 의미 있음 — 4w 가 sequential 에 어떻게 영향?)
+
+---
+
+## ensemble_v2_als_ease_bsarec — QUEUED
+
+[code: ./ensemble_v2_als_ease_bsarec/](./ensemble_v2_als_ease_bsarec/) · 출처: [references §1 RRF](../docs/references.md#1-추천-모델--논문--공식-코드)
+
+### 가설 (이번엔 진짜 family-diverse)
+
+- ensemble_v1 negative 의 근본 원인은 ALS+EASE 가 같은 CF family + EASE 가 ALS dominate. BSARec 추가로 **진짜 다른 family (sequential)** 결합
+- BSARec 단독 self-val 0.2391 > ALS/EASE 0.184 라인 — 후보 set 자체가 다름
+- 3-model RRF 가 BSARec 단독 (best single) 대비 **+** 면 family diversity 가설 검증
+
+### 입력 / 출력
+
+- 입력: 3개 predictions.parquet (ALS / EASE / BSARec) + exp_001 의 val_gt + eval_users + mappings
+- 출력: `fused_predictions.parquet`, `output.csv` (둘 다 .gitignored)
+
+### 실행 (서버)
+
+```bash
+cd /root/workspace/recsys-commerce && git pull
+cd experiments/ensemble_v2_als_ease_bsarec
+python run.py                                # default k=60
+python run.py --k-const 30 --no-submission   # ablation
+```
+
+### 결과 (실행 후 작성)
+
+| 모델 | NDCG@10 | recall@10 |
+|---|---:|---:|
+| exp_000 ALS | 0.18376 | 0.25578 |
+| exp_001 EASE | 0.18476 | 0.29089 |
+| exp_002 BSARec | 0.23910 | 0.31945 |
+| **RRF v2 (k=60)** | TBD | TBD |
+
+핵심 질문: fused NDCG@10 가 **BSARec 단독 (0.2391) 대비 +** 인가? 또는 -인가?
+- **+** 면 family-diverse RRF 작동 → 제출 가치
+- **-** 면 BSARec 가 너무 dominate → ALS/EASE 가 noise. ensemble 보다 BSARec 단독 + DiffRec 추가가 나음
+
+### 다음 액션
+
+- v2 lift 있으면 → 제출 + DiffRec/LightGCN 추가 후 v3 (4-5 model RRF)
+- v2 negative 면 → ensemble 접근 한계, 다음 모델 (DiffRec) 진입에 집중
 
 ---
 
