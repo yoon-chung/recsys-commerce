@@ -16,8 +16,10 @@
 ├── README.md
 ├── core/            # 공용 유틸 (data_loader, metrics, validation, submission, ensemble)
 ├── experiments/        # 실험 폴더
-│   └── exp_NNN_<name>/
-└── submissions/log.md # 제출 이력
+│   ├── log.md          # ★ 모든 실험의 단일 lab notebook
+│   └── exp_NNN_<name>/ # 코드 + config 만 (README 없음)
+├── docs/               # references, EDA, 모델 카탈로그
+└── submissions/       # 제출 CSV 백업 (gitignored, raw IDs)
 ```
 
 자세한 컨벤션과 가이드라인은 `CLAUDE.md` 참고.

@@ -39,12 +39,13 @@
         ├── CLAUDE.md, .gitignore, README.md
         ├── core/                       # 공용 유틸 (data_loader, validation, metrics, submission)
         ├── experiments/                 # Week 1 모델링
+        │   ├── log.md                   # ★ 모든 실험의 단일 lab notebook (가설/하이퍼/결과/결론)
         │   └── exp_NNN_<name>/
-        │       ├── train.py, inference.py, config.yaml, README.md  (★ git)
+        │       ├── train.py, inference.py, config.yaml             (★ git, README 없음)
         │       ├── predictions.parquet, output.csv                  (.gitignore)
         │       └── saved/                                           (.gitignore)
         ├── service/                     # Week 2 — FastAPI / 서비스 코드
-        ├── docs/                        # EDA / 모델 카탈로그 / 의사결정 기록
+        ├── docs/                        # EDA / 모델 카탈로그 / references / 의사결정 기록
         └── submissions/log.md           # 제출 이력
 ```
 
@@ -166,7 +167,8 @@ shape: 638,257 × 50 = 31,912,850 rows
 ### 커밋 규칙
 - 의미 있는 변경마다 push (서버 다운/회수 대비)
 - 메시지: `[exp_NNN] <설명>`, `[core] <설명>`, `[doc] <설명>`
-- 각 실험 `README.md`에 가설/하이퍼/점수 기록
+- **실험 기록은 [experiments/log.md](experiments/log.md) 단일 파일에 작성** (per-folder README 없음)
+- 새 모델/라이브러리 도입 시 [docs/references.md](docs/references.md) 표에 row 추가
 - **커밋 전 `git status`로 데이터/베이스라인 파일이 staging에 없는지 확인**
 
 ### 서버에서 절대 하지 말 것
@@ -216,7 +218,7 @@ wandb.log_artifact(pred_artifact)
 6. 자체 validation NDCG@10 확인 → inference 진행
 7. `predictions.parquet` → `core/submission.py`로 `output.csv` 변환
 8. 형식 검증 후 제출
-9. **로컬PC**: 결과를 `experiments README` + `submissions/log.md`에 기록 → push
+9. **로컬PC**: 결과를 [experiments/log.md](experiments/log.md) 의 해당 실험 섹션 + leaderboard + 제출 이력 표에 기록 → push
 
 **제출 횟수 절약 원칙**: 자체 validation에서 베이스라인 대비 명확히 더 좋을 때만 제출.
 
@@ -276,9 +278,9 @@ print('OK')
 # 제출 csv 백업 (서버에서 로컬로)
 scp <user>@<server>:/root/workspace/recsys-commerce/experiments/exp_NNN/output.csv ./submissions/
 
-# 결과 기록 후 push
+# 결과 기록 후 push (모든 실험 기록은 experiments/log.md 단일 파일에)
 cd ~/projects/commerce-recsys-cy
-git add experiments/exp_NNN/README.md submissions/log.md
+git add experiments/log.md
 git commit -m "[exp_NNN] results: val 0.0892 / public 0.0865"
 git push
 ```
@@ -306,7 +308,7 @@ git push
 - 메모리 251GB 여유 → parquet 전체 로드 OK. user-item matrix는 `scipy.sparse.csr_matrix`.
 - GPU 24GB 단일 → SASRec/BERT4Rec batch_size 4096 정도까지.
 - 새 데이터/큰 산출물 생성 시 **`.gitignore` 패턴 확인**.
-- 실험 폴더 만들 때 `README.md`도 함께 — 가설/하이퍼/점수/결론.
+- 실험 폴더 만들 때 **per-folder README 작성 X** — 가설/하이퍼/점수/결론은 모두 [experiments/log.md](experiments/log.md) 에 섹션 추가.
 - `core/` 코드는 **환경 하드코딩 금지** — `experiments/` 와 `service/` 둘 다에서 사용되는 공용 유틸이므로 path / config 는 caller 가 주입.
 - ⚠️ **주최사 데이터/베이스라인 코드를 git에 올리지 말 것** — staging 전 `git status` 확인.
 - ⚠️ **베이스라인 코드 그대로 복사 금지** — 컨벤션/패턴만 참고.

@@ -65,10 +65,8 @@ Thumbs.db
 # ===== 로그 =====
 *.log
 
-# ===== 실험 이력 (대회 종료 시점에 한 번에 commit) =====
-submissions/log.md
-
 # ===== 제출 CSV 백업 (raw user_id / item_id 포함) =====
+# 실험 기록 자체는 experiments/log.md (git-tracked) 로 통합됨
 submissions/*.csv
 
 # ===== Jupyter 노트북 (셀 출력에 데이터 원본 ID 노출 위험) =====
