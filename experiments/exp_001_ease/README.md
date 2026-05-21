@@ -48,7 +48,7 @@ python train.py
 python inference.py
 ```
 
-`core/` 모듈 자동 import (`Path(__file__).resolve().parents[3]` 트릭). wandb 는 `wandb_run_id.txt` 로 train+inference 단일 run 통합.
+`core/` 모듈 자동 import (`Path(__file__).resolve().parents[2]` 트릭). wandb 는 `wandb_run_id.txt` 로 train+inference 단일 run 통합.
 
 ## 산출물
 
