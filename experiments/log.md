@@ -32,11 +32,16 @@
 | **exp_002** | **BSARec (4m)** | **sequential** | **0.2391** | **0.3195** | **0.0943** | **DONE** |
 | ensemble_v2 (equal) | ALS+EASE+BSARec RRF | fusion | 0.2067 | 0.3207 | (제출 X) | DONE (negative −0.032 vs BSARec) |
 | ensemble_v2 (w 1:1:2) | weighted RRF (BSARec 2x) | fusion | 0.2031 | 0.3068 | (제출 X) | DONE (negative −0.036, **worse than equal**) |
-| exp_002c | BSARec (2w) | sequential | TBD | TBD | — | QUEUED |
-| exp_002d | BSARec (1w) | sequential | TBD | TBD | — | QUEUED |
-| **exp_002b** | **BSARec (4w)** | **sequential** | **0.2414** | **0.3242** | **0.0955** | **DONE — +0.0012 public vs 4m (recency 효과 실증)** |
-| exp_003 | DiffRec | diffusion | TBD | TBD | — | QUEUED |
+| **exp_002b** | **BSARec (4w)** | **sequential** | **0.2414** | **0.3242** | **0.0955** | **DONE — +0.0012 public vs 4m** |
+| exp_002c | BSARec (2w, holdout) | sequential | 0.2374 | 0.3240 | (제출 X) | DONE — 4w 대비 −0.0040 (sparse) |
+| exp_002d | BSARec (1w, holdout) | sequential | 0.2395 | 0.3168 | (제출 X) | DONE — 4w 대비 −0.0019 |
+| **exp_002e** | **BSARec (4w_full, spike+)** | **sequential** | **0.2470*** | **0.3274*** | **0.0975** | **DONE — new top, +0.0020 vs 4w_holdout** |
+| exp_002g | BSARec (2w_full, spike+) | sequential | 0.2479* | 0.3304* | TBD | DONE self-val (predicted public ~0.0980) |
+| exp_002f | BSARec (1w_full, spike만) | sequential | 0.2408* | 0.3190* | (제출 X) | DONE — spike-only training, less data hurts |
+| exp_003 | DiffRec | diffusion | OOM | OOM | — | FAILED — 89%+ user history padding blew RAM |
 | (예정) | LightGCN | graph | — | — | — | Week 1 Day 6 |
+
+\* full-data 변종 (val 포함 학습) self-val 은 train=val 겹침으로 인플레이션 포함. 의사결정은 public 기준.
 
 ---
 
@@ -47,6 +52,7 @@
 | 1 | 2026-05-20 | exp_000 | ALS | **0.0791** | calibration. 베이스라인 공시 0.0847 대비 6.6% gap ≈ 7/120일 holdout 비율. 파이프라인 정상 확인 |
 | 2 | 2026-05-21 | exp_002 | BSARec | **0.0943** | **+11.3% vs ALS 베이스라인, +12.0% vs SASRec 베이스라인**. self-val 0.2391 / public 0.0943 = ratio **2.535** (ALS 2.32 보다 ~9% 큼 — sequential 이 self-val 더 inflate). Family-diverse ensemble v2 의 기반 |
 | 3 | 2026-05-21 | exp_002b | BSARec (4w) | **0.0955** | **+12.8% vs ALS / +13.4% vs SASRec 베이스라인**. self-val 0.2414 / public 0.0955 = ratio **2.528** (4m 2.535 와 사실상 동일). Δ vs 4m: self-val +0.0023 / public +0.0012. **calibration 모델 예측 정확도 검증**: 예측 0.0953 vs 실제 0.0955 (오차 0.0002) |
+| 4 | 2026-05-22 | exp_002e | BSARec (4w_full, spike+) | **0.0975** | **+15.1% vs ALS / +15.8% vs SASRec 베이스라인**. self-val 0.2470 / public 0.0975 = ratio **2.533** (002b 2.528 와 사실상 동일 — calibration 안정성 한 번 더 검증). Δ vs 4w_holdout: self-val +0.0056 / public +0.0020. 예측 0.0977 vs 실제 0.0975 (오차 0.0002). **spike 포함 retrain 효과 큼** — final-submission style 작동. 새 leaderboard 1위 |
 
 ---
 
