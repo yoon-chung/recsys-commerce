@@ -29,7 +29,7 @@
 | exp_000 | ALS | MF | 0.1838 | 0.2558 | **0.0791** | DONE |
 | exp_001 | EASE | item-item | 0.1848 | 0.2909 | (제출 X) | DONE |
 | ensemble_v1 | ALS+EASE RRF | fusion | 0.1725 | 0.2624 | (제출 X) | DONE (negative) |
-| exp_002 | BSARec (4m) | sequential | TBD | TBD | — | RUNNING |
+| **exp_002** | **BSARec (4m)** | **sequential** | **0.2391** | **0.3195** | TBD | **DONE** |
 | exp_002b | BSARec (4w) | sequential | TBD | TBD | — | QUEUED |
 | exp_003 | DiffRec | diffusion | TBD | TBD | — | QUEUED |
 | (예정) | LightGCN | graph | — | — | — | Week 1 Day 6 |
@@ -211,7 +211,7 @@ Lift: NDCG vs ALS **−0.011**, vs EASE **−0.012**. recall vs EASE **−0.028*
 
 ---
 
-## exp_002_bsarec — RUNNING (2026-05-21)
+## exp_002_bsarec — DONE (2026-05-21)
 
 [code: ./exp_002_bsarec/](./exp_002_bsarec/) · 출처: [references §1 BSARec + §2 RecBole](../docs/references.md) · **AAAI 2024**
 
@@ -252,29 +252,46 @@ nohup python train.py > train.log 2>&1 & disown      # ~1.5-2h, batch=2048
 nohup python inference.py > inference.log 2>&1 & disown   # ~5min
 ```
 
-### 학습 진행 (epoch 10 시점)
+### 학습 진행
 
 | Epoch | RecBole leave-one-out NDCG@10 |
 |---:|---:|
 | 0 | 0.2204 |
 | 8 | 0.2365 |
 | 10 | 0.2381 |
+| 27 | 0.2430 (first plateau) |
+| 45 | 0.2433 |
+| **52** | **0.2438** (best, saved) |
+| 56+ | noise band (~0.243 ± 0.001), 수동 종료 |
 
-RecBole NDCG ≠ 우리 self-val (다른 split). 우리 NDCG 는 inference.py 후 확정.
+학습 ~3시간 (batch=2048, lr=0.002). epoch 52 부터는 노이즈 lottery 단계 → 수동 kill 후 inference.
 
-### 결과 (학습 완료 후 작성)
+### 결과 ✅
 
-| 메트릭 | 값 |
-|---|---:|
-| 자체 val NDCG@10 | TBD |
-| 자체 val recall@10 | TBD |
-| 학습 시간 | TBD |
+| 메트릭 | BSARec | exp_000 ALS | exp_001 EASE | 차이 (vs EASE) |
+|---|---:|---:|---:|---:|
+| **자체 val NDCG@10** | **0.23910** | 0.18376 | 0.18476 | **+29.4%** |
+| **자체 val recall@10** | **0.31945** | 0.25578 | 0.29089 | +9.8% |
+| 학습 시간 | ~3h (batch=2048) | <1min | ~5min | — |
+| n_known_users | 623,866 | 동일 | 동일 | |
+| n_cold_start | 14,391 | 동일 | 동일 | |
+
+**RecBole leave-one-out (0.2438) ↔ 우리 self-val (0.2391)** 거의 일치 — self-val 메트릭 신뢰성 부수 확인.
+
+**Public 추정** (calibration ratio 2.32 적용): 0.2391 / 2.32 ≈ **0.103** (baseline ALS public 0.0847 대비 +21%). 단 ratio 는 ALS 기준 측정값 — sequential 모델에서 그대로 적용될 보장 없음.
+
+### 결론
+
+- ✅ **Sequential family 는 우리 데이터에서 진짜로 다른 시그널을 잡음** — [ensemble_v1 negative result](#ensemble_v1_als_ease--done-2026-05-21-negative) 의 "family diversity 가 진짜 변수" 가설을 데이터로 검증
+- ✅ self-val 0.2391 은 ALS/EASE (0.185 라인) 대비 **+30%, 노이즈 범위 훨씬 초과**. 진짜 lift
+- ⚠️ Public 점수가 self-val 환산값 (≈ 0.103) 에 근접할지는 sequential 모델 calibration 새로 측정 필요 — submission 필요
 
 ### 다음 액션
 
-- 결과 확보 → `ensemble_v2_als_ease_bsarec/` 생성 (3-family RRF lift 측정)
-- α/c ablation 가치 있음 — ensemble 결과 본 후 우선순위 결정
-- 병행: [exp_002b](#exp_002b_bsarec_4w--queued) recency window ablation
+- **제출 강력 후보** — 베이스라인 (ALS 공시 0.0847) 명백히 초과 가능. 동시에 BSARec calibration ratio 재측정 효과
+- → `ensemble_v2_als_ease_bsarec/` 생성 (3-family RRF lift 측정) — 이제 family diversity 가 진짜라서 v2 가 v1 같은 negative 결과 나올 가능성 낮음
+- α/c ablation 우선순위 낮음 (이미 큰 lift 확보, marginal sweep 으로 갈 가치 작음)
+- 병행: [exp_002b](#exp_002b_bsarec_4w--queued) recency window ablation (이제 더 의미 있음 — 4w 가 sequential 에 어떻게 영향?)
 
 ---
 
