@@ -36,7 +36,7 @@
 | exp_002c | BSARec (2w, holdout) | sequential | 0.2374 | 0.3240 | (제출 X) | DONE — 4w 대비 −0.0040 (sparse) |
 | exp_002d | BSARec (1w, holdout) | sequential | 0.2395 | 0.3168 | (제출 X) | DONE — 4w 대비 −0.0019 |
 | **exp_002e** | **BSARec (4w_full, spike+)** | **sequential** | **0.2470*** | **0.3274*** | **0.0975** | **DONE — new top, +0.0020 vs 4w_holdout** |
-| exp_002g | BSARec (2w_full, spike+) | sequential | 0.2479* | 0.3304* | TBD | DONE self-val (predicted public ~0.0980) |
+| exp_002g | BSARec (2w_full, spike+) | sequential | 0.2479* | 0.3304* | **0.0975** | DONE — tied with 002e |
 | exp_002f | BSARec (1w_full, spike만) | sequential | 0.2408* | 0.3190* | (제출 X) | DONE — spike-only training, less data hurts |
 | exp_003 | DiffRec | diffusion | OOM | OOM | — | FAILED — 89%+ user history padding blew RAM |
 | (예정) | LightGCN | graph | — | — | — | Week 1 Day 6 |
@@ -53,6 +53,7 @@
 | 2 | 2026-05-21 | exp_002 | BSARec | **0.0943** | **+11.3% vs ALS 베이스라인, +12.0% vs SASRec 베이스라인**. self-val 0.2391 / public 0.0943 = ratio **2.535** (ALS 2.32 보다 ~9% 큼 — sequential 이 self-val 더 inflate). Family-diverse ensemble v2 의 기반 |
 | 3 | 2026-05-21 | exp_002b | BSARec (4w) | **0.0955** | **+12.8% vs ALS / +13.4% vs SASRec 베이스라인**. self-val 0.2414 / public 0.0955 = ratio **2.528** (4m 2.535 와 사실상 동일). Δ vs 4m: self-val +0.0023 / public +0.0012. **calibration 모델 예측 정확도 검증**: 예측 0.0953 vs 실제 0.0955 (오차 0.0002) |
 | 4 | 2026-05-22 | exp_002e | BSARec (4w_full, spike+) | **0.0975** | **+15.1% vs ALS / +15.8% vs SASRec 베이스라인**. self-val 0.2470 / public 0.0975 = ratio **2.533** (002b 2.528 와 사실상 동일 — calibration 안정성 한 번 더 검증). Δ vs 4w_holdout: self-val +0.0056 / public +0.0020. 예측 0.0977 vs 실제 0.0975 (오차 0.0002). **spike 포함 retrain 효과 큼** — final-submission style 작동. 새 leaderboard 1위 |
+| 5 | 2026-05-22 | exp_002g | BSARec (2w_full, spike+) | **0.0975** | **002e 와 tie**. self-val 0.2479 / public 0.0975 = ratio **2.542** (살짝 ↑ — 2w 의 추가 self-val gain +0.0009 가 spike 외우기 비중 더 컸음, Mar 1-7 generalization 으로 transfer 안 됨). 예측 0.0980 vs 실제 0.0975 (오차 −0.0005). Tie-break 상 002e (#4) 가 002g (#5) 보다 상위 |
 
 ---
 
