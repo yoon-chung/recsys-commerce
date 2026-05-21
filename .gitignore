@@ -12,12 +12,12 @@ baseline/
 
 # ===== 학습/제출 산출물 =====
 /output/
-members/*/exp_*/saved/
-members/*/exp_*/wandb/
-members/*/exp_*/predictions.parquet
-members/*/exp_*/output.csv
-members/*/exp_*/*.pth
-members/*/exp_*/*.ckpt
+experiments/exp_*/saved/
+experiments/exp_*/wandb/
+experiments/exp_*/predictions.parquet
+experiments/exp_*/output.csv
+experiments/exp_*/*.pth
+experiments/exp_*/*.ckpt
 
 # ===== 큰 산출물 일반 =====
 *.pth

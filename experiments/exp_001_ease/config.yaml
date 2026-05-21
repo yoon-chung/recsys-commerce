@@ -1,0 +1,53 @@
+# exp_001_ease — Embarrassingly Shallow Autoencoder (Steck 2019)
+#
+# Closed-form item-item: B = -P / diag(P) where P = (X^T X + λI)^{-1}, diag(B)=0
+# Single hyperparameter (λ). 학습 시간 1-3분 (29.5k × 29.5k 행렬 inversion).
+#
+# 목적:
+#   1. 추천 시스템 입문 정수 — 30줄 closed-form 직접 구현 학습 가치
+#   2. ALS (MF factor) 와 다른 family (item-item) → ensemble RRF 다양성 ↑
+#   3. Week 2 서비스용 fast inference foundation (1 user 추론 < 1ms)
+#
+# EDA 정합:
+#   - 14.6% item 반복도 (eda_findings §7) → item-item similarity 시그널 강함
+#   - 99.78% view-dominated implicit feedback (eda_findings §2) → sparse 환경에 EASE 강함
+
+# ---- Data paths (server canonical layout) -------------------------------
+train_data: /root/data/train.parquet
+sample_submission: /root/data/sample_submission.csv
+
+# ---- Validation split (exp_000 동일 — cross-model comparison) ----------
+val_days: 7
+gt_event_types: [purchase]
+
+# ---- Interaction matrix --------------------------------------------------
+# EASE 원논문은 binary (1 if interacted). 우리는 event_type weight 옵션 노출.
+# 첫 실험은 모두 1.0 (ALS exp_000 과 동일) 으로 fair comparison 확보.
+event_weights:
+  view: 1.0
+  cart: 1.0
+  purchase: 1.0
+
+# ---- EASE hyperparameter -------------------------------------------------
+# λ (regularization): 클수록 smoothing 강함. paper: MovieLens 100-1000 범위.
+# 우리 데이터 29.5k items × ~3M nnz 기준 시작점 200.
+reg_lambda: 200.0
+
+# ---- Numerical -----------------------------------------------------------
+# float64 inversion 권장 (numerical stability), float32 저장 (메모리 + 추론 속도)
+dtype_compute: float64
+dtype_storage: float32
+seed: 42
+
+# ---- Prediction / submission ---------------------------------------------
+top_n: 50
+items_per_user: 10
+# exp_000 lesson: 본 것 다시 추천 가능 (14.6% 반복도 + Feb 27-29 spike 재구매 패턴)
+filter_already_liked: false
+# inference batch: batch_size × n_items × 4B = ~590MB at 5000 × 29.5k × 4
+inference_batch_size: 5000
+
+# ---- wandb ---------------------------------------------------------------
+wandb_entity: yooni0125-
+wandb_project: cy-commerce-recsys
+run_name: exp_001_ease

@@ -15,7 +15,7 @@ Typical usage:
     train_df, val_gt_df = time_based_split(df, val_days=7)
     eval_users = get_eval_users(val_gt_df, train_df)
     # train model on train_df, predict for eval_users, then:
-    from shared.metrics import ndcg_at_k_from_df
+    from core.metrics import ndcg_at_k_from_df
     score = ndcg_at_k_from_df(pred_df, val_gt_df, k=10)
 
 No caching is performed by design -- splits are cheap and caching invites
@@ -74,7 +74,7 @@ def time_based_split(
     Returns:
         (train_df, val_gt_df). val_gt_df is already filtered to the
         relevant event types and is directly consumable by
-        `shared.metrics.ndcg_at_k_from_df` as the `gt_df` argument.
+        `core.metrics.ndcg_at_k_from_df` as the `gt_df` argument.
 
     Raises:
         ValueError: missing required columns or val_days <= 0.
@@ -295,7 +295,7 @@ if __name__ == "__main__":
     assert len(u1_val) == 1
     assert u1_val["event_time"].iloc[0] == base + pd.Timedelta(days=8)
 
-    print("\n=== integration with shared.metrics.ndcg_at_k_from_df ===")
+    print("\n=== integration with core.metrics.ndcg_at_k_from_df ===")
     from metrics import ndcg_at_k_from_df
 
     train_df, val_gt_df = time_based_split(df, val_days=3)

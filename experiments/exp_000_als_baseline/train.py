@@ -6,7 +6,7 @@ then save the model + supporting artifacts for inference.py to consume.
 Artifacts written to ./saved/ (gitignored):
     als.npz            -- trained model (implicit.als.AlternatingLeastSquares.save)
     interactions.npz   -- training CSR (needed for recommend's filter_already_liked)
-    mappings/          -- user2idx.json + item2idx.json (shared.data_loader format)
+    mappings/          -- user2idx.json + item2idx.json (core.data_loader format)
     val_gt.parquet     -- held-out purchase events for self-val NDCG@10
     eval_users.json    -- sorted list of users with val gt AND known in train
 
@@ -25,8 +25,8 @@ import logging
 import sys
 from pathlib import Path
 
-# Make `shared/` importable regardless of CWD.
-PROJECT_ROOT = Path(__file__).resolve().parents[3]
+# Make `core/` importable regardless of CWD.
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(PROJECT_ROOT))
 
 import numpy as np
@@ -35,13 +35,13 @@ from scipy.sparse import csr_matrix, save_npz
 
 from implicit.als import AlternatingLeastSquares
 
-from shared.data_loader import (  # noqa: E402
+from core.data_loader import (  # noqa: E402
     load_train_data,
     build_id_mappings,
     cache_mappings,
     add_idx_columns,
 )
-from shared.validation import time_based_split, get_eval_users  # noqa: E402
+from core.validation import time_based_split, get_eval_users  # noqa: E402
 
 logger = logging.getLogger(__name__)
 

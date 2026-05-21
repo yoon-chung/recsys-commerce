@@ -2,7 +2,11 @@
 
 부트캠프 RecSys 경진대회 작업용 프로젝트. 이커머스 4개월 행동 로그(view/cart/purchase)로 **다음 1주일에 사용자가 구매할 아이템 10개**를 예측한다.
 
-**현재 작업 형태**: cy 개인 작업. 추후 팀 합류 가능성에 대비해 `members/cy/` 구조 채택 (팀 repo 이전 비용 최소화).
+**작업 형태**: cy 개인 프로젝트. 대회 종료 후 portfolio + 서비스 개발 데모로 활용 예정.
+
+**프로젝트 단계** (2026-05-21 결정):
+- **Week 1**: 추천 시스템 대표 모델 5개 개발 (EASE / BSARec / DiffRec / LightGCN + ALS 완료)
+- **Week 2**: 학습된 모델로 FastAPI 등 추천 서비스 구축
 
 **Repo 상태**: 현재 **private** (GitHub: `yoon-chung/recsys-commerce`). 향후 대회 종료 후 **public 전환 예정**. ⚠️ 주최사 규정상 **대회 데이터와 베이스라인 코드는 공개 금지** → git에서 완전히 제외.
 
@@ -16,7 +20,7 @@
 ```
 ~/projects/commerce-recsys-cy/        # git repo
 ├── CLAUDE.md, .gitignore, README.md
-├── shared/, members/cy/, submissions/
+├── core/, experiments/, service/, submissions/
 ├── (선택) data/, code/                # 다운로드 후 .gitignore로 제외됨
 └── output/                            # 로컬 검증용 (.gitignore)
 ```
@@ -33,13 +37,15 @@
 └── workspace/
     └── recsys-commerce/               # ★ git repo (clone)
         ├── CLAUDE.md, .gitignore, README.md
-        ├── shared/                    # 공용 유틸 (자체 작성)
-        ├── members/cy/                # 개인 실험
+        ├── core/                       # 공용 유틸 (data_loader, validation, metrics, submission)
+        ├── experiments/                 # Week 1 모델링
         │   └── exp_NNN_<name>/
         │       ├── train.py, inference.py, config.yaml, README.md  (★ git)
         │       ├── predictions.parquet, output.csv                  (.gitignore)
         │       └── saved/                                           (.gitignore)
-        └── submissions/log.md         # 제출 이력
+        ├── service/                     # Week 2 — FastAPI / 서비스 코드
+        ├── docs/                        # EDA / 모델 카탈로그 / 의사결정 기록
+        └── submissions/log.md           # 제출 이력
 ```
 
 **경로 참조 규칙** (학습 스크립트):
@@ -72,7 +78,7 @@
 | 대회 데이터 | `/root/data/`, 로컬 `data/` | 주최사 재배포 금지 |
 | 베이스라인 코드 | `/root/code/`, 로컬 `code/` | 주최사 재배포 금지 |
 | 데이터 파생물 | `user2idx.json`, `item2idx.json`, `SASRec_dataset/` 등 | 원본 ID 포함 |
-| 모델 weights, prediction csv/parquet | `members/*/exp_*/` 산출물 | 데이터 정보 포함 가능 |
+| 모델 weights, prediction csv/parquet | `experiments/exp_*/` 산출물 | 데이터 정보 포함 가능 |
 | 압축 파일 | `*.tar.gz`, `*.zip` | 원본 데이터/코드 포함 가능 |
 
 **주의**:
@@ -120,7 +126,7 @@ shape: 638,257 × 50 = 31,912,850 rows
 ```
 
 ### 2. `output.csv` — 제출용
-`predictions.parquet` → `shared/submission.py`로 변환 (dedup + popularity fallback + 형식 검증).
+`predictions.parquet` → `core/submission.py`로 변환 (dedup + popularity fallback + 형식 검증).
 
 ### 3. wandb artifact — 백업
 - 모델 weights: `cy_exp_NNN_<model>` (type: model)
@@ -142,7 +148,7 @@ shape: 638,257 × 50 = 31,912,850 rows
 
 ## 베이스라인 컨벤션 (참고만)
 - `argparse` 기반 CLI
-- `set_seed(42)` 항상 호출 (`shared/utils.py`에 자체 작성)
+- `set_seed(42)` 항상 호출 (`core/utils.py`에 자체 작성)
 - 데이터 절대경로 `/root/data/` 사용
 
 ---
@@ -153,18 +159,18 @@ shape: 638,257 × 50 = 31,912,850 rows
 
 ### 브랜치 + 폴더 하이브리드
 - **브랜치**: 큰 방향성 변경 시에만 (`exp/lightgcn`, `exp/two-stage`)
-- **폴더**: 같은 모델군 변형은 `members/cy/exp_NNN_<name>/`로 분리
+- **폴더**: 같은 모델군 변형은 `experiments/exp_NNN_<name>/`로 분리
 - `main`: 베이스라인 + 검증된 개선
 - `exp/<name>`: 실험 브랜치 → main에 merge
 
 ### 커밋 규칙
 - 의미 있는 변경마다 push (서버 다운/회수 대비)
-- 메시지: `[exp_NNN] <설명>`, `[shared] <설명>`, `[doc] <설명>`
+- 메시지: `[exp_NNN] <설명>`, `[core] <설명>`, `[doc] <설명>`
 - 각 실험 `README.md`에 가설/하이퍼/점수 기록
 - **커밋 전 `git status`로 데이터/베이스라인 파일이 staging에 없는지 확인**
 
 ### 서버에서 절대 하지 말 것
-- git tracking 파일(`shared/`, `members/cy/`의 .py/.md) 수정
+- git tracking 파일(`core/`, `experiments/`의 .py/.md) 수정
 - 만약 임시 수정이 필요하면: `git stash` → `git pull` → `git stash pop`
 
 ---
@@ -175,9 +181,9 @@ shape: 638,257 × 50 = 31,912,850 rows
 |---|---|---|
 | 본인 코드 | 서버 `/root/workspace/recsys-commerce/` | **GitHub** |
 | 베이스라인 코드 | 서버 `/root/code/` | 주최사 URL 재다운로드 |
-| 모델 weights | `members/cy/exp_NNN/saved/` | **wandb artifact** |
-| predictions.parquet | `members/cy/exp_NNN/` | **wandb artifact** |
-| 제출 csv | `members/cy/exp_NNN/output.csv` | **로컬 다운로드 + wandb log** |
+| 모델 weights | `experiments/exp_NNN/saved/` | **wandb artifact** |
+| predictions.parquet | `experiments/exp_NNN/` | **wandb artifact** |
+| 제출 csv | `experiments/exp_NNN/output.csv` | **로컬 다운로드 + wandb log** |
 | 실험 메트릭 | wandb (클라우드) | — |
 | 원본 데이터 | `/root/data/` | **로컬PC 다운로드 + 주최사 URL** |
 
@@ -202,29 +208,17 @@ wandb.log_artifact(pred_artifact)
 ---
 
 ## 실험 워크플로우
-1. **로컬PC**: `members/cy/exp_NNN_<name>/` 폴더 생성 + 코드 작성
-2. `shared/` 함수 사용 (data_loader, metrics, validation, submission)
+1. **로컬PC**: `experiments/exp_NNN_<name>/` 폴더 생성 + 코드 작성
+2. `core/` 함수 사용 (data_loader, metrics, validation, submission)
 3. `git status` 확인 후 `git commit && git push`
 4. **서버PC**: `cd /root/workspace/recsys-commerce && git pull`
-5. `cd members/cy/exp_NNN_<name> && python train.py` (wandb 백업 포함)
+5. `cd experiments/exp_NNN_<name> && python train.py` (wandb 백업 포함)
 6. 자체 validation NDCG@10 확인 → inference 진행
-7. `predictions.parquet` → `shared/submission.py`로 `output.csv` 변환
+7. `predictions.parquet` → `core/submission.py`로 `output.csv` 변환
 8. 형식 검증 후 제출
 9. **로컬PC**: 결과를 `experiments README` + `submissions/log.md`에 기록 → push
 
 **제출 횟수 절약 원칙**: 자체 validation에서 베이스라인 대비 명확히 더 좋을 때만 제출.
-
----
-
-## 팀 합류 시 이전 절차 (미래 대비)
-
-1. `members/cy/` 폴더 통째로 팀 repo의 `members/cy/`로 복사
-2. `shared/` 호환성 점검
-3. wandb: 개인 project → 팀 project로 run 이동
-4. `submissions/log.md` 팀 로그에 병합
-5. brnach 정리
-
-**지금부터 지킬 것**: `members/cy/` 구조 유지, `predictions.parquet` 표준, `shared/` 일반성, README 일관성.
 
 ---
 
@@ -261,7 +255,7 @@ cd /root/code && python train_als.py
 python -c "import pandas as pd; df = pd.read_parquet('/root/data/train.parquet'); print(df.shape, df['user_id'].nunique(), df['item_id'].nunique())"
 
 # 실험 실행
-cd /root/workspace/recsys-commerce/members/cy/exp_NNN_<name>
+cd /root/workspace/recsys-commerce/experiments/exp_NNN_<name>
 python train.py
 python inference.py
 
@@ -280,11 +274,11 @@ print('OK')
 ### 로컬에서
 ```bash
 # 제출 csv 백업 (서버에서 로컬로)
-scp <user>@<server>:/root/workspace/recsys-commerce/members/cy/exp_NNN/output.csv ./submissions/
+scp <user>@<server>:/root/workspace/recsys-commerce/experiments/exp_NNN/output.csv ./submissions/
 
 # 결과 기록 후 push
 cd ~/projects/commerce-recsys-cy
-git add members/cy/exp_NNN/README.md submissions/log.md
+git add experiments/exp_NNN/README.md submissions/log.md
 git commit -m "[exp_NNN] results: val 0.0892 / public 0.0865"
 git push
 ```
@@ -303,8 +297,8 @@ git push
 ---
 
 ## Claude Code 작업 가이드라인
-- 새 실험은 `members/cy/exp_NNN_<name>/`에 작성. **베이스라인 `/root/code/`는 수정/복사하지 않음**.
-- **`shared/` 함수 적극 활용** — data_loader, metrics, validation, submission. 없으면 만들어서 추가.
+- 새 실험은 `experiments/exp_NNN_<name>/`에 작성. **베이스라인 `/root/code/`는 수정/복사하지 않음**.
+- **`core/` 함수 적극 활용** — data_loader, metrics, validation, submission. 없으면 만들어서 추가.
 - 새 학습 스크립트엔 **wandb 통합 + artifact 백업 코드 기본 포함**.
 - **모든 실험은 `predictions.parquet` (top-50 + score) 산출 필수**.
 - 제출 파일 만들면 **위 검증 스크립트로 형식 확인 후 보고**.
@@ -313,7 +307,7 @@ git push
 - GPU 24GB 단일 → SASRec/BERT4Rec batch_size 4096 정도까지.
 - 새 데이터/큰 산출물 생성 시 **`.gitignore` 패턴 확인**.
 - 실험 폴더 만들 때 `README.md`도 함께 — 가설/하이퍼/점수/결론.
-- `shared/` 코드는 **cy 환경 하드코딩 금지** (팀 합류 대비).
+- `core/` 코드는 **환경 하드코딩 금지** — `experiments/` 와 `service/` 둘 다에서 사용되는 공용 유틸이므로 path / config 는 caller 가 주입.
 - ⚠️ **주최사 데이터/베이스라인 코드를 git에 올리지 말 것** — staging 전 `git status` 확인.
 - ⚠️ **베이스라인 코드 그대로 복사 금지** — 컨벤션/패턴만 참고.
 - ⚠️ **서버에서 코드 수정 금지** — 로컬에서만 작성, 서버는 `git pull`만.

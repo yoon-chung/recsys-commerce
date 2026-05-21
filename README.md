@@ -14,8 +14,8 @@
 ├── CLAUDE.md          # Claude Code 작업 컨텍스트
 ├── .gitignore
 ├── README.md
-├── shared/            # 공용 유틸 (data_loader, metrics, validation, submission, ensemble)
-├── members/cy/        # 개인 실험 폴더
+├── core/            # 공용 유틸 (data_loader, metrics, validation, submission, ensemble)
+├── experiments/        # 실험 폴더
 │   └── exp_NNN_<name>/
 └── submissions/log.md # 제출 이력
 ```
@@ -54,7 +54,7 @@ mkdir -p /root/workspace && cd /root/workspace
 git clone <REPO_URL>
 
 # 5. 실험 실행
-cd recsys-commerce/members/cy/exp_NNN_<name>
+cd recsys-commerce/experiments/exp_NNN_<name>
 python train.py
 ```
 

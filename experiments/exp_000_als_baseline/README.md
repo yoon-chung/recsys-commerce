@@ -1,6 +1,6 @@
 # exp_000_als_baseline
 
-implicit ALS **베이스라인 정확 재현** — 점수 향상이 아니라 (1) reference 점수 확보, (2) `shared/` 인프라 검증, (3) 자체 val ↔ public NDCG@10의 gap 측정이 목적.
+implicit ALS **베이스라인 정확 재현** — 점수 향상이 아니라 (1) reference 점수 확보, (2) `core/` 인프라 검증, (3) 자체 val ↔ public NDCG@10의 gap 측정이 목적.
 
 > **1차 시도 노트 (2026-05-20)**: 처음에 factors=128 / reg=0.01 / alpha=40 / weights 1·3·5 / `filter_already_liked=True`로 돌려 self-val NDCG=0.0288, recall=0.0566 (베이스라인 공시 0.0847의 1/3 수준). hyperparams가 베이스라인과 어긋난 게 원인일 가능성이 가장 컸음. 그래서 이 폴더의 config을 베이스라인과 동일한 셋으로 갈아끼우고 재실행. 1차 시도의 wandb run은 entity `yooni0125-` / project `cy-commerce-recsys` / name `exp_000_als_baseline`(이전 run id)에 보존됨.
 
@@ -8,7 +8,7 @@ implicit ALS **베이스라인 정확 재현** — 점수 향상이 아니라 (1
 
 1. **베이스라인 ALS의 자체 val NDCG@10 측정**: 베이스라인 코드 (`/root/code/train_als.py`)와 hyperparams/플래그 동일하게 맞춰 돌리면, 같은 알고리즘이 우리 self-val(마지막 7일 hold-out)에서 어떤 수치를 내는가.
 2. **gap 정량화**: 베이스라인 공시 public 0.0847과 우리 self-val 수치의 차이가 (a) 분포 shift (Feb 27~29 purchase 스파이크) 때문인지 (b) 우리 파이프라인 버그 때문인지 판단.
-3. **`shared/` 모듈 통합 검증**: data_loader / validation / metrics / submission 4개가 638k user × 8.35M event 실제 스케일에서 동작 (1차 시도에서 이미 확인됨, 이번에도 재확인).
+3. **`core/` 모듈 통합 검증**: data_loader / validation / metrics / submission 4개가 638k user × 8.35M event 실제 스케일에서 동작 (1차 시도에서 이미 확인됨, 이번에도 재확인).
 
 ## 접근
 
@@ -39,13 +39,13 @@ implicit ALS **베이스라인 정확 재현** — 점수 향상이 아니라 (1
 ```bash
 cd /root/workspace/recsys-commerce && git pull
 
-cd members/cy/exp_000_als_baseline
+cd experiments/exp_000_als_baseline
 rm -rf saved wandb predictions.parquet output.csv   # 1차 시도 상태 정리
 python train.py
 python inference.py
 ```
 
-`shared/` 모듈은 `sys.path` 자동 추가됨 (`Path(__file__).resolve().parents[3]` 트릭). wandb는 `wandb_run_id.txt`로 train+inference 단일 run 통합됨.
+`core/` 모듈은 `sys.path` 자동 추가됨 (`Path(__file__).resolve().parents[3]` 트릭). wandb는 `wandb_run_id.txt`로 train+inference 단일 run 통합됨.
 
 ## 산출물
 
@@ -71,7 +71,7 @@ python inference.py
 
 베이스라인 공시 0.0847과 우리 0.0791의 갭 = **6.6%**, 학습 데이터 손실 비율 7일/120일 = **5.8%**와 거의 일치. 즉 갭의 거의 전부가 **학습 데이터 7일 holdout** 때문이고, 알고리즘/구현/shared 파이프라인은 베이스라인과 등가. 0.0791이 0.0847에 가까운 것만으로:
 
-- shared/ 4모듈 (data_loader / validation / metrics / submission) 모두 638k user × 8.35M event 실제 스케일에서 정상
+- core/ 4모듈 (data_loader / validation / metrics / submission) 모두 638k user × 8.35M event 실제 스케일에서 정상
 - 베이스라인 hyperparams + flags 그대로 매칭한 결과 베이스라인 거의 재현
 - predictions.parquet → output.csv → validate_submission → 실제 제출까지 end-to-end OK
 
@@ -84,7 +84,7 @@ python inference.py
 ### 3. self-val의 신뢰 범위
 
 - ✅ 같은 알고리즘·같은 split 내 **상대 비교** (ranking) — 신뢰 가능
-- ⚠️ **절대값** — Feb 27~29 spike 효과로 inflate됨 ([docs/eda_findings.md §5](../../../docs/eda_findings.md))
+- ⚠️ **절대값** — Feb 27~29 spike 효과로 inflate됨 ([docs/eda_findings.md §5](../../docs/eda_findings.md))
 - 다음 실험에선 self-val을 비교 지표로, public 환산치를 "이 모델이 제출 가치 있는가" 판단 근거로 활용
 
 ### 4. 트레이드오프 발견
@@ -100,6 +100,6 @@ python inference.py
 
 - ~~calibration 제출~~ ✅ 완료 (NDCG@10 = 0.0791)
 - exp_001: ALS lever ablation (선택사항) — `filter_already_liked` / event_weights / factors 중 어떤 게 6.4× 점프의 주범인지 분리. 점수 향상보단 학습 목적.
-- **exp_001 또는 exp_002 (다음 우선순위)**: sequential 모델 (TiSASRec 또는 BSARec, [docs/candidate_models.md](../../../docs/candidate_models.md)) — EDA 강력 권장. ALS 베이스라인 재현 완료했으니 다음 단계 진입 자연스러움. self-val × 1/2.32 ≈ public 기대치로 활용
+- **exp_001 또는 exp_002 (다음 우선순위)**: sequential 모델 (TiSASRec 또는 BSARec, [docs/candidate_models.md](../../docs/candidate_models.md)) — EDA 강력 권장. ALS 베이스라인 재현 완료했으니 다음 단계 진입 자연스러움. self-val × 1/2.32 ≈ public 기대치로 활용
 - exp_003: two-stage (ALS candidate + LightGBM reranker)
 - exp_NNN: EASE — 30줄 구현, ensemble 다양성 보조 멤버
