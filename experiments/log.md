@@ -34,7 +34,7 @@
 | ensemble_v2 (w 1:1:2) | weighted RRF (BSARec 2x) | fusion | 0.2031 | 0.3068 | (제출 X) | DONE (negative −0.036, **worse than equal**) |
 | exp_002c | BSARec (2w) | sequential | TBD | TBD | — | QUEUED |
 | exp_002d | BSARec (1w) | sequential | TBD | TBD | — | QUEUED |
-| exp_002b | BSARec (4w) | sequential | TBD | TBD | — | QUEUED |
+| exp_002b | BSARec (4w) | sequential | 0.2414 | 0.3242 | (제출 X) | DONE — +0.0023 vs 4m (noise) |
 | exp_003 | DiffRec | diffusion | TBD | TBD | — | QUEUED |
 | (예정) | LightGCN | graph | — | — | — | Week 1 Day 6 |
 
@@ -368,7 +368,7 @@ ensemble 접고:
 
 ---
 
-## exp_002b_bsarec_4w — QUEUED
+## exp_002b_bsarec_4w — DONE 2026-05-21
 
 [code: ./exp_002b_bsarec_4w/](./exp_002b_bsarec_4w/) · 멘토 권고 ablation (참고: [references §4](../docs/references.md#2026-05-21-멘토링--핵심-결정))
 
@@ -405,10 +405,42 @@ nohup python train.py > train.log 2>&1 & disown      # ~30-60min (4m 의 1/4)
 nohup python inference.py > inference.log 2>&1 & disown   # ~5min
 ```
 
+### 결과
+
+학습: epoch 71 best @ RecBole LOO NDCG 0.2658, ~46분 (54 epoch 학습 후 plateau, 수동 종료).
+
+| 모델 | self-val NDCG@10 | recall@10 | Δ vs 4m |
+|---|---:|---:|---:|
+| exp_002 (4m) | 0.2391 | 0.3195 | — |
+| **exp_002b (4w)** | **0.2414** | **0.3242** | **+0.0023 / +0.0047** |
+
+### 4-way sub-val 분석 (eval_val_slices.py)
+
+| 모델 | full NDCG | no_spike NDCG | spike_only NDCG | n_no_spike |
+|---|---:|---:|---:|---:|
+| ALS 4m | 0.1838 | 0.0000 | 0.1846 | 4 |
+| EASE | 0.1848 | 0.0833 | 0.1852 | 4 |
+| BSARec 4m | 0.2391 | 0.0000 | 0.2401 | 4 |
+| BSARec 4w | 0.2414 | 0.0000 | 0.2424 | 4 |
+
+**중대 발견**: val 1,223 purchase 중 **Feb 23-26 (no_spike) 에 단 4건 (0.3%)**, Feb 27-29 spike 에 1,219건 (99.7%).
+
+→ 사용자가 말한 "마지막 3일에 구매 70%" 는 전체 120일 기준. **val 7일 윈도우 안에서는 spike 가 99.7%**.
+→ no_spike 슬라이스 n=4 통계 무의미. `full ≈ spike_only`. 분리 진단 불가능한 데이터 구조.
+→ calibration ratio 2.32 의 진짜 의미: **모델의 spike 예측 능력이 normal week (Mar 1-7) 로 transfer 안 됨**. self-val 은 사실상 spike 예측 skill 만 측정.
+
+### 결론
+
+- **recency window (4w) 는 BSARec 의 의미 있는 lever 가 아님** — Δ +0.0023 은 노이즈 수준 (calibration 2.32 곱하면 public 영향 +0.001 미만)
+- BSARec 의 핵심 lift 는 sequential 구조 자체, recency 가 아님
+- 2w/1w 도 비슷하거나 더 안 좋을 가능성 ↑ — sparse 효과 + 여전히 spike-dominated val
+- portfolio talking point: "sequential 모델도 우리 데이터에서는 recency window 둔감, sparse 효과가 더 큼" + "val 자체가 spike-dominated 라서 traditional sub-val 진단 불가능 — distribution shift 진단 어려움 명확화"
+
 ### 다음 액션
 
-- lift 있음 → `--last-days 14`, `7` ablation
-- lift 없음 → "recency window 는 helping X" 결론, ensemble v2 입력으로 4m 채택
+- ~~2w/1w 강행~~: skip 권고 (4w 결과로 recency 효과 없음 확정)
+- exp_003 DiffRec 우선 — matrix-based 라 recency 둔감, 4m 데이터로 진행
+- 단 scaffold (exp_002c/d) 는 남겨둠 — 향후 재방문 가능 / portfolio 자산
 
 ---
 
