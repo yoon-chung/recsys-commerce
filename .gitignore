@@ -18,6 +18,9 @@ experiments/exp_*/predictions.parquet
 experiments/exp_*/output.csv
 experiments/exp_*/*.pth
 experiments/exp_*/*.ckpt
+experiments/ensemble_*/wandb/
+experiments/ensemble_*/output.csv
+experiments/ensemble_*/fused_predictions.parquet
 
 # ===== 큰 산출물 일반 =====
 *.pth
