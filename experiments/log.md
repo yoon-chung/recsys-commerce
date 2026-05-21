@@ -29,7 +29,7 @@
 | exp_000 | ALS | MF | 0.1838 | 0.2558 | **0.0791** | DONE |
 | exp_001 | EASE | item-item | 0.1848 | 0.2909 | (제출 X) | DONE |
 | ensemble_v1 | ALS+EASE RRF | fusion | 0.1725 | 0.2624 | (제출 X) | DONE (negative) |
-| **exp_002** | **BSARec (4m)** | **sequential** | **0.2391** | **0.3195** | TBD | **DONE** |
+| **exp_002** | **BSARec (4m)** | **sequential** | **0.2391** | **0.3195** | **0.0943** | **DONE** |
 | exp_002b | BSARec (4w) | sequential | TBD | TBD | — | QUEUED |
 | exp_003 | DiffRec | diffusion | TBD | TBD | — | QUEUED |
 | (예정) | LightGCN | graph | — | — | — | Week 1 Day 6 |
@@ -41,6 +41,7 @@
 | # | Date | Exp | Model | Public NDCG@10 | 비고 |
 |---:|---|---|---|---:|---|
 | 1 | 2026-05-20 | exp_000 | ALS | **0.0791** | calibration. 베이스라인 공시 0.0847 대비 6.6% gap ≈ 7/120일 holdout 비율. 파이프라인 정상 확인 |
+| 2 | 2026-05-21 | exp_002 | BSARec | **0.0943** | **+11.3% vs ALS 베이스라인, +12.0% vs SASRec 베이스라인**. self-val 0.2391 / public 0.0943 = ratio **2.535** (ALS 2.32 보다 ~9% 큼 — sequential 이 self-val 더 inflate). Family-diverse ensemble v2 의 기반 |
 
 ---
 
@@ -272,13 +273,17 @@ nohup python inference.py > inference.log 2>&1 & disown   # ~5min
 |---|---:|---:|---:|---:|
 | **자체 val NDCG@10** | **0.23910** | 0.18376 | 0.18476 | **+29.4%** |
 | **자체 val recall@10** | **0.31945** | 0.25578 | 0.29089 | +9.8% |
+| **Public NDCG@10** | **0.0943** | 0.0791 | (제출 X) | **+19.2% vs ALS public** |
 | 학습 시간 | ~3h (batch=2048) | <1min | ~5min | — |
 | n_known_users | 623,866 | 동일 | 동일 | |
 | n_cold_start | 14,391 | 동일 | 동일 | |
 
 **RecBole leave-one-out (0.2438) ↔ 우리 self-val (0.2391)** 거의 일치 — self-val 메트릭 신뢰성 부수 확인.
 
-**Public 추정** (calibration ratio 2.32 적용): 0.2391 / 2.32 ≈ **0.103** (baseline ALS public 0.0847 대비 +21%). 단 ratio 는 ALS 기준 측정값 — sequential 모델에서 그대로 적용될 보장 없음.
+**Public submission 결과** (2026-05-21):
+- Public NDCG@10 = **0.0943**, vs 베이스라인 ALS 공시 (0.0847) **+11.3%**, vs SASRec 공시 (0.0842) **+12.0%**
+- self-val 0.2391 / public 0.0943 = **calibration ratio 2.535** (ALS 의 2.32 보다 ~9% 큼)
+- 의미: sequential 모델의 self-val 이 ALS 보다 약간 더 inflate 됨. 향후 DiffRec / LightGCN 등 sequential/recency 민감 모델 추정 시 **÷ 2.5 가 더 정확**
 
 ### 결론
 
