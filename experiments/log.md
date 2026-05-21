@@ -376,6 +376,34 @@ nohup python inference.py > inference.log 2>&1 & disown   # ~10min
 
 ---
 
+## 전략 pivot (2026-05-21) — 모델 lift → system + LLM
+
+데이터 특성 (99.78% view dominant + Feb 27-29 spike + self-val/public ratio 2.32) 때문에 NDCG lift 짜내기 ROI 가 매우 낮음. portfolio 무게중심을 다음과 같이 이동:
+
+| Was | Now |
+|---|---|
+| 5 모델 + ensemble lift 추구 | **Week 2 FastAPI 멀티 모델 서빙 + Solar API conversational layer** |
+| 4-week / hyperparam ablation | paradigm coverage 만 (light) |
+| mini-L3Rec 검토 | skip — lift 가능성 낮고 시간 부담 |
+
+**Week 1 남은 진행**:
+- exp_002 (BSARec 4m) — 끝까지 (학습 중)
+- exp_002b (BSARec 4w) — queued, **결과 기록 후 light wrap-up**
+- exp_003 (DiffRec) — paradigm coverage 차원에서만, lift 추구 X
+- LightGCN — Day 6 paradigm coverage 차원에서만
+- ensemble v2 (5-model RRF) — 한 번만 정리용
+
+**Skip 결정**:
+- mini-L3Rec (A/A')
+- BSARec α/c hyperparam sweep
+- 추가 ablation, longer training, fine-tuning
+
+**Week 2 메인** (포트폴리오 가치 최대):
+- FastAPI 멀티 모델 서빙 (`predict_for_user(user_id, top_k, model='auto'|'ease'|...)`)
+- Latency SLO + fallback chain (CF → popularity → empty)
+- Prometheus 메트릭 + structured logging
+- **Solar API conversational layer** — query → intent → CF retrieval → 자연어 응답
+
 ## 컨벤션 — 새 실험 추가 시
 
 1. **폴더 생성**: `experiments/exp_NNN_<name>/` 에 코드 + config 만. README 안 만듦
