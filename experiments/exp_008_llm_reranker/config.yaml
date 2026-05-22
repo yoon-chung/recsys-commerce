@@ -1,0 +1,44 @@
+# exp_008_llm_reranker -- Solar API reranker on TIFU-KNN top-50.
+#
+# Pipeline:
+#   1. TIFU-KNN exp_007 의 top-50 candidates 로드 (per user)
+#   2. user 의 최근 history (last N events, with metadata) 로드
+#   3. LLM 에 prompt: "user 의 history 와 50 candidate items 보고 top-10 reorder"
+#   4. JSON 응답 parse -> top-10 ranked list
+#   5. NDCG@10 평가 (TIFU baseline 0.2922 와 비교)
+#
+# PoC scope:
+#   - eval_users 928 만 (full 638k 는 $200+ 비용)
+#   - solar-mini (저렴) 우선, 결과 좋으면 solar-pro2 ablation
+
+# ---- Solar API -------------------------------------------------------
+# API key 는 .env 의 UPSTAGE_API_KEY 에서 로드 (이 yaml 에는 절대 X)
+solar_base_url: https://api.upstage.ai/v1
+solar_model: solar-mini             # solar-mini / solar-pro2
+solar_temperature: 0.0              # deterministic for reranking
+solar_max_tokens: 512               # top-10 ranked list 출력 정도
+solar_timeout_sec: 60               # per-call timeout
+solar_max_retries: 3
+solar_concurrent_calls: 8           # async parallel calls
+
+# ---- Data ------------------------------------------------------------
+train_data: /root/data/train.parquet
+sample_submission: /root/data/sample_submission.csv
+val_days: 7
+gt_event_types: [purchase]
+ease_saved: ../exp_001_ease/saved   # mappings + val_gt + eval_users 재사용
+tifu_predictions: ../exp_007_tifu_knn/predictions.parquet
+
+# ---- Reranking 파라미터 ---------------------------------------------
+n_candidates: 50               # TIFU top-50 만 LLM 에 입력
+n_recent_events: 15            # user 최근 15 events 만 prompt 에 (token 절약)
+top_n_output: 10               # LLM 이 reorder 한 top-10
+
+# ---- PoC scope --------------------------------------------------------
+poc_n_users: 100                # 처음 100 user 만 — prompt/parsing 검증
+full_eval_users: true           # 검증 후 eval_users 928 전체 돌릴지
+
+# ---- wandb ------------------------------------------------------------
+wandb_entity: yooni0125-
+wandb_project: cy-commerce-recsys
+run_name: exp_008_llm_reranker_solar_mini
