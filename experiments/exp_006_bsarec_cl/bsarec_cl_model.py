@@ -33,12 +33,12 @@ class BSARecCL(BSARec):
 
     def __init__(self, config, dataset) -> None:
         super().__init__(config, dataset)
-        # CL4SRec hyperparameters
-        self.lmd = float(config.get("lmd", 0.1))             # contrastive weight
-        self.tau = float(config.get("tau", 1.0))             # InfoNCE temperature
-        self.crop_r = float(config.get("crop_ratio", 0.4))   # crop drop ratio
-        self.mask_r = float(config.get("mask_ratio", 0.3))   # mask fraction
-        self.reorder_r = float(config.get("reorder_ratio", 0.4))  # reorder fraction
+        # CL4SRec hyperparameters -- RecBole Config 는 dict 아니므로 bracket notation 사용
+        self.lmd = float(config["lmd"])             # contrastive weight
+        self.tau = float(config["tau"])             # InfoNCE temperature
+        self.crop_r = float(config["crop_ratio"])   # crop drop ratio
+        self.mask_r = float(config["mask_ratio"])   # mask fraction
+        self.reorder_r = float(config["reorder_ratio"])  # reorder fraction
 
     # --------------------------------------------------------------------
     # Augmentation: pick one of three per call. Length only changes for crop.
