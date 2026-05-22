@@ -1,0 +1,93 @@
+# exp_005_cl4srec -- CL4SRec (Xie et al., ICDE 2022).
+#
+# Contrastive Learning for SRS: builds two augmented views per sequence via
+# {crop, mask, reorder} and adds an InfoNCE loss alongside the SASRec
+# next-item CE. Directly motivated by our EDA's sparsity 99.96% + short
+# median seq=6 -- both contexts where augmentation generalises strongest.
+# Paper reports +8.5% NDCG@10, +9.69% HR@10 vs SASRec.
+#
+# RecBole has CL4SRec built-in -- no model port.
+#
+# Orthogonality (vs sibling sequentials we ran):
+#   BSARec   : FFT / frequency-domain inductive bias
+#   TiSASRec : explicit time-gap matrix
+#   CL4SRec  : augmentation-based representation regularisation
+
+# ---- Data (same atomic as exp_002/exp_004) -------------------------------
+data_path: ./data
+dataset: cy_commerce
+USER_ID_FIELD: user_id
+ITEM_ID_FIELD: item_id
+TIME_FIELD: timestamp
+load_col:
+  inter: [user_id, item_id, timestamp]
+NEG_PREFIX: neg_
+
+MAX_ITEM_LIST_LENGTH: 50
+
+# ---- Model -- SASRec backbone -------------------------------------------
+n_layers: 2
+n_heads: 2
+hidden_size: 64
+inner_size: 256
+hidden_dropout_prob: 0.5
+attn_dropout_prob: 0.5
+hidden_act: gelu
+layer_norm_eps: 1.0e-12
+initializer_range: 0.02
+loss_type: CE
+
+# ---- CL4SRec-specific ---------------------------------------------------
+# tau    : InfoNCE temperature (paper sweeps 0.1-1.0; 1.0 default).
+# lmd    : weight of the contrastive loss term (paper sweeps 0.05-0.4).
+# sim    : similarity metric for InfoNCE ('dot' or 'cos'). dot per paper.
+# Augmentation choices are sampled inside the model (crop/mask/reorder).
+tau: 1.0
+lmd: 0.1
+sim: dot
+
+# ---- Training -----------------------------------------------------------
+epochs: 200
+train_batch_size: 2048
+eval_batch_size: 2048
+learning_rate: 0.002
+stopping_step: 5
+eval_step: 2
+learner: adam
+train_neg_sample_args: ~     # CE loss
+
+# ---- RecBole eval (early stopping only) ---------------------------------
+metrics: [NDCG, Recall, MRR, Hit]
+topk: [10]
+valid_metric: NDCG@10
+eval_args:
+  split:
+    LS: valid_and_test
+  group_by: user
+  order: TO
+  mode: full
+
+# ---- Misc ----------------------------------------------------------------
+seed: 42
+reproducibility: true
+device: cuda
+gpu_id: 0
+show_progress: true
+checkpoint_dir: ./saved
+save_dataset: false
+log_wandb: false
+
+# ---- Our own wandb -------------------------------------------------------
+wandb_entity: yooni0125-
+wandb_project: cy-commerce-recsys
+run_name: exp_005_cl4srec
+
+# ---- Self-val + inference -----------------------------------------------
+train_data: /root/data/train.parquet
+sample_submission: /root/data/sample_submission.csv
+val_days: 7
+gt_event_types: [purchase]
+ease_saved: ../exp_001_ease/saved
+top_n: 50
+items_per_user: 10
+inference_batch_size: 2048

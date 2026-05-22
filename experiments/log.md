@@ -38,8 +38,12 @@
 | **exp_002e** | **BSARec (4w_full, spike+)** | **sequential** | **0.2470*** | **0.3274*** | **0.0975** | **DONE — new top, +0.0020 vs 4w_holdout** |
 | exp_002g | BSARec (2w_full, spike+) | sequential | 0.2479* | 0.3304* | **0.0975** | DONE — tied with 002e |
 | exp_002f | BSARec (1w_full, spike만) | sequential | 0.2408* | 0.3190* | (제출 X) | DONE — spike-only training, less data hurts |
-| exp_003 | DiffRec | diffusion | OOM | OOM | — | FAILED — 89%+ user history padding blew RAM |
-| (예정) | LightGCN | graph | — | — | — | Week 1 Day 6 |
+| exp_003 | DiffRec | diffusion | TBD | TBD | — | RETRY — OOM 수정 (user filter + uni->full + eval_step=10), 학습 진행 중 |
+| exp_004 | TiSASRec | sequential time-aware | — | — | — | QUEUED (Day 1A, EDA CV=4.12 fit) |
+| exp_005 | CL4SRec | sequential contrastive | — | — | — | QUEUED (Day 1B, sparsity 99.96% fit) |
+| (예정) | MB-STR | multi-behavior | — | — | — | Day 2-3 (paper port, view/cart/purchase 분리) |
+| (예정) | LLM-as-Reranker | 2-stage LLM | — | — | — | Day 4 |
+| (예정) | ensemble v3 | weighted RRF | — | — | — | Day 5 |
 
 \* full-data 변종 (val 포함 학습) self-val 은 train=val 겹침으로 인플레이션 포함. 의사결정은 public 기준.
 
