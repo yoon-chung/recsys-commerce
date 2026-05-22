@@ -35,7 +35,7 @@
 | exp_002f | BSARec (1w_full, spike만) | sequential | 0.2408\* | 0.3190\* | — | DONE (less data hurts) |
 | exp_003 | DiffRec | diffusion | 0.1543 | 0.2257 | — | DONE (< ALS, paradigm coverage 만) |
 | exp_004 | FEARec | sequential FFT+autocorr | — | — | — | FAILED (RecBole 1.2 hang) |
-| exp_005 | BERT4Rec | bidirectional MLM | 0.2006 (LOO) | 0.3485 (LOO) | — | running→killed (plateau, ensemble signal 확보) |
+| exp_005 | BERT4Rec | bidirectional MLM | 0.2158 | 0.3061 | — | DONE (killed ep13, 추정 public ~0.085 → 제출 X) |
 | exp_006 | BSARec+CL4SRec hybrid | sequential + contrastive | — | — | — | QUEUED (novel, portfolio piece) |
 | **exp_007** | **TIFU-KNN (4m)** | **classical KNN + temporal freq** | **0.2922** | **0.3915** | **0.1175** | **DONE — new top, +20.5% vs BSARec** |
 | (예정) exp_007b | TIFU-KNN + multi-behavior weights | classical | — | — | — | QUEUED (cart=3 / purchase=5 ablation) |
@@ -212,7 +212,7 @@
 
 ---
 
-## exp_005_bert4rec — RUNNING (Day 1B)
+## exp_005_bert4rec — DONE 2026-05-22 (Day 1B, killed ep13, 제출 X)
 
 [code](./exp_005_bert4rec/) · **CIKM 2019** bidirectional MLM Cloze.
 
@@ -220,9 +220,40 @@
 
 **하이퍼**: n_layers=2, hidden=64, n_heads=2, mask_ratio=0.2, max_seq=50, batch=2048, lr=0.001. eval_step=2.
 
-**진행 (2026-05-22 05:30)**: epoch 0 484s (8 min), epoch 1 484s. **epoch 1 RecBole LOO NDCG 0.1762**, recall 0.3087. epoch 2 진행 중.
+**학습 trajectory** (RecBole LOO):
+| Epoch | NDCG@10 | recall@10 | Δ NDCG (2-ep) |
+|---:|---:|---:|---:|
+| 1 | 0.1762 | 0.3087 | — |
+| 3 | 0.1885 | 0.3275 | +0.0123 |
+| 5 | 0.1940 | 0.3369 | +0.0055 |
+| 7 | 0.1980 | 0.3435 | +0.0040 |
+| 9 | 0.1979 | 0.3431 | −0.0001 |
+| 11 | 0.1999 | 0.3479 | +0.0020 |
+| **13 (best)** | **0.2006** | **0.3485** | +0.0007 |
 
-**결정점**: epoch 3 eval (~12분 후) 보고 — 0.18+ 면 계속, 0.17 정체 면 kill 후 exp_006 전환.
+상승률 반감 페이스 → ep13 plateau 임박. TIFU-KNN 0.1175 결과 후 GPU 회수 우선 → manual kill.
+
+**우리 self-val 결과** (vs RecBole LOO 갭이 핵심 발견):
+
+| 메트릭 | RecBole LOO | our 7-day val | Δ |
+|---|---:|---:|---:|
+| NDCG@10 | 0.2006 | 0.2158 | +0.0152 |
+| recall@10 | **0.3485** | **0.3061** | **−0.0424** |
+
+**핵심 발견 — bidirectional MLM 의 task mismatch** (portfolio gold):
+
+비교: BSARec 패턴에서는 RecBole LOO 가 self-val 보다 *높음* (transformer causal 의 정상 패턴). BERT4Rec 는 **반대 방향**:
+- LOO = "마지막 item 마스킹 → 예측" → Cloze training 과 **정확히 일치** → over-specialized
+- 우리 val = "7일 윈도우 multi-purchase 예측" → next-item 가정 깨짐
+- **Bidirectional MLM 이 multi-target purchase task 에 transfer 약함**
+- Portfolio talking point: "**모델 training task 와 inference task 정합성**이 RecSys 특유의 함정 — BERT4Rec 이 LOO 에 over-fit 하는 사례를 데이터로 잡음"
+
+**추정 public**: 0.2158 / 2.53 ≈ **0.0853** (ALS 베이스라인 수준) → **제출 X**.
+
+**Ensemble 가치 재평가**:
+- recall 0.3061 ≈ BSARec recall 0.3195 → 이전 가설 "다른 후보 set" 약화
+- TIFU recall 0.3915 와 큰 격차 → ensemble 시 BSARec 1개로 충분, BERT4Rec 추가 lift 작을 듯
+- 결정: ensemble v3 후보로 보관, but 핵심 아님
 
 ---
 
