@@ -1,0 +1,94 @@
+# exp_006_bsarec_cl -- BSARec + CL4SRec hybrid.
+#
+# Frequency-rescaling attention (BSARec, AAAI 2024) + contrastive auxiliary
+# loss over crop/mask/reorder augmentation (CL4SRec, ICDE 2022). Novel
+# combination -- neither paper trains with both inductive biases. EDA fit:
+#   - BSARec mechanism: motivated by repeat-view 14.63% (frequency-domain
+#     periodic-interest modelling).
+#   - CL4SRec mechanism: motivated by sparsity 99.96% + short sequence
+#     median 6 (augmentation generalises best in sparse regime).
+# Together: cover both periodicity AND representation regularisation.
+
+# ---- Data (same atomic as exp_002 / exp_004 / exp_005) -------------------
+data_path: ./data
+dataset: cy_commerce
+USER_ID_FIELD: user_id
+ITEM_ID_FIELD: item_id
+TIME_FIELD: timestamp
+load_col:
+  inter: [user_id, item_id, timestamp]
+NEG_PREFIX: neg_
+
+MAX_ITEM_LIST_LENGTH: 50
+
+# ---- Model -- SASRec backbone -------------------------------------------
+n_layers: 2
+n_heads: 2
+hidden_size: 64
+inner_size: 256
+hidden_dropout_prob: 0.5
+attn_dropout_prob: 0.5
+hidden_act: gelu
+layer_norm_eps: 1.0e-12
+initializer_range: 0.02
+loss_type: CE
+
+# ---- BSARec-specific (matches exp_002 winner) ---------------------------
+alpha: 0.7
+c: 5
+
+# ---- CL4SRec-specific (paper defaults / teammate-validated values) ------
+# lmd: weight on contrastive loss. Paper sweeps 0.05-0.4; 0.1 is safe default.
+# tau: InfoNCE temperature. 1.0 = no scaling (paper default).
+# crop / mask / reorder ratios: paper sweeps ~0.2-0.6; medians used here.
+lmd: 0.1
+tau: 1.0
+crop_ratio: 0.4      # drop 40% of items in crop (keep 60%)
+mask_ratio: 0.3      # mask 30% of non-pad positions
+reorder_ratio: 0.4   # shuffle a 40%-length sub-sequence
+
+# ---- Training -----------------------------------------------------------
+epochs: 200
+train_batch_size: 2048
+eval_batch_size: 2048
+learning_rate: 0.002
+stopping_step: 5
+eval_step: 2
+learner: adam
+train_neg_sample_args: ~
+
+# ---- RecBole eval (early stopping only) ---------------------------------
+metrics: [NDCG, Recall, MRR, Hit]
+topk: [10]
+valid_metric: NDCG@10
+eval_args:
+  split:
+    LS: valid_and_test
+  group_by: user
+  order: TO
+  mode: full
+
+# ---- Misc ---------------------------------------------------------------
+seed: 42
+reproducibility: true
+device: cuda
+gpu_id: 0
+show_progress: true
+checkpoint_dir: ./saved
+save_dataset: false
+log_wandb: false
+
+# ---- Our own wandb ------------------------------------------------------
+wandb_entity: yooni0125-
+wandb_project: cy-commerce-recsys
+run_name: exp_006_bsarec_cl
+
+# ---- Self-val + inference -----------------------------------------------
+train_data: /root/data/train.parquet
+sample_submission: /root/data/sample_submission.csv
+val_days: 7
+gt_event_types: [purchase]
+ease_saved: ../exp_001_ease/saved
+top_n: 50
+items_per_user: 10
+inference_batch_size: 2048
