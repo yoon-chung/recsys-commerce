@@ -1,0 +1,94 @@
+# exp_009_mbstr -- BSARec backbone + multi-behavior embedding
+#
+# Motivation: 팀원이 MB-STR + SASRec + TIFU 3-model weighted ensemble 로 0.1431
+# 달성. MB-STR weight 26% 가 의미 있는 비중 -> multi-behavior signal 이
+# 우리 BSARec 가 못 잡는 영역 보완 가능성 큼.
+#
+# 단순화 design (paper 의 transformer attention 변형은 skip, 추가 lift 작을 듯):
+#   - BSARec FFT attention 그대로 유지
+#   - Input embedding 에 behavior_id (view=1/cart=2/purchase=3) 추가
+#   - e_i = item_emb + behavior_emb + position_emb
+#   - 학습/inference 시 behavior_id list 추가로 sequence 에 같이 전달
+#
+# Window: 4m (rare event 절대 빈도 보존; cart 660k + purchase 70k 의 multi-behavior 학습)
+
+# ---- Data ---------------------------------------------------------------
+data_path: ./data
+dataset: cy_commerce_mb        # 4m, behavior_id 포함
+USER_ID_FIELD: user_id
+ITEM_ID_FIELD: item_id
+TIME_FIELD: timestamp
+load_col:
+  inter: [user_id, item_id, timestamp, behavior_id]
+NEG_PREFIX: neg_
+
+MAX_ITEM_LIST_LENGTH: 50
+
+# behavior_id 가 sequential list 로 변환되도록 RecBole 에 알림
+# (load_col 에 포함 + token type 이면 자동 변환됨)
+
+# ---- Model -- SASRec/BSARec backbone -----------------------------------
+n_layers: 2
+n_heads: 2
+hidden_size: 64
+inner_size: 256
+hidden_dropout_prob: 0.5
+attn_dropout_prob: 0.5
+hidden_act: gelu
+layer_norm_eps: 1.0e-12
+initializer_range: 0.02
+loss_type: CE
+
+# ---- BSARec FFT (exp_002 winner) ---------------------------------------
+alpha: 0.7
+c: 5
+
+# ---- MB-STR specific ---------------------------------------------------
+# 3 behaviors: view (1) / cart (2) / purchase (3). 0 reserved for PAD.
+n_behaviors: 4                 # 0=PAD, 1=view, 2=cart, 3=purchase
+
+# ---- Training -----------------------------------------------------------
+epochs: 200
+train_batch_size: 2048
+eval_batch_size: 2048
+learning_rate: 0.002
+stopping_step: 5
+eval_step: 2
+learner: adam
+train_neg_sample_args: ~
+
+# ---- RecBole eval (early stopping only) --------------------------------
+metrics: [NDCG, Recall, MRR, Hit]
+topk: [10]
+valid_metric: NDCG@10
+eval_args:
+  split:
+    LS: valid_and_test
+  group_by: user
+  order: TO
+  mode: full
+
+# ---- Misc --------------------------------------------------------------
+seed: 42
+reproducibility: true
+device: cuda
+gpu_id: 0
+show_progress: true
+checkpoint_dir: ./saved
+save_dataset: false
+log_wandb: false
+
+# ---- Our own wandb -----------------------------------------------------
+wandb_entity: yooni0125-
+wandb_project: cy-commerce-recsys
+run_name: exp_009_mbstr
+
+# ---- Self-val + inference ----------------------------------------------
+train_data: /root/data/train.parquet
+sample_submission: /root/data/sample_submission.csv
+val_days: 7
+gt_event_types: [purchase]
+ease_saved: ../exp_001_ease/saved
+top_n: 50
+items_per_user: 10
+inference_batch_size: 2048
