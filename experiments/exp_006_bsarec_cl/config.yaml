@@ -9,9 +9,9 @@
 #     median 6 (augmentation generalises best in sparse regime).
 # Together: cover both periodicity AND representation regularisation.
 
-# ---- Data (same atomic as exp_002 / exp_004 / exp_005) -------------------
+# ---- Data (4w_holdout: BSARec backbone 의 recency 효과 활용. exp_002b 와 동일 window) -
 data_path: ./data
-dataset: cy_commerce
+dataset: cy_commerce_4w
 USER_ID_FIELD: user_id
 ITEM_ID_FIELD: item_id
 TIME_FIELD: timestamp

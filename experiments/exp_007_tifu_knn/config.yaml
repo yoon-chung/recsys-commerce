@@ -1,0 +1,46 @@
+# exp_007_tifu_knn -- TIFU-KNN (SIGIR 2020).
+#
+# Non-neural classical baseline. Motivation:
+#   - 팀원 (다른 사람) 이 mbr_sas_tifu_knn 으로 0.1431 보고 -- classical KNN +
+#     temporal frequency 가 우리 데이터에 강력할 가능성 (item 반복 14.6% +
+#     Feb 27-29 spike + multi-behavior).
+#   - 우리 portfolio 에 KNN/frequency 류 paradigm 부재 -> coverage 확보.
+#   - Production e-commerce 의 first-class signal: "user repeatedly views X
+#     -> likely purchase" 를 transformer 의 max_seq=50 cap 보다 직접 모델링.
+#
+# Algorithm (paper, He et al. SIGIR 2020):
+#   1. user history -> G chronological groups
+#   2. user_vec[u, i] = Σ_g (r_a^(G-1-g)) · Σ_t∈g (r_w^(L_g-1-pos)) · 1[item_t == i]
+#   3. L2-normalize rows -> cosine sim KNN (top-K neighbors)
+#   4. score(u, i) = α · user_vec[u, i] + (1-α) · mean(neighbors_vec)
+
+# ---- Data ---------------------------------------------------------------
+train_data: /root/data/train.parquet
+sample_submission: /root/data/sample_submission.csv
+val_days: 7
+gt_event_types: [purchase]
+ease_saved: ../exp_001_ease/saved   # reuse mappings + val_gt + eval_users
+last_days: null                      # null = 4m full. TIFU 의 decay 가 이미 recency 처리.
+
+# Event weights (paper baseline = 1/1/1. multi-behavior weighting ablation 은 exp_007b)
+event_weights:
+  view: 1.0
+  cart: 1.0
+  purchase: 1.0
+
+# ---- TIFU-KNN 하이퍼 (paper default) -----------------------------------
+group_count: 7        # 시간 bucket 개수. 4m / 7 ≈ 17일/bucket
+decay_within: 0.9     # 한 group 안 위치별 decay (r_w)
+decay_across: 0.7     # group 간 decay (r_a, 오래된 group 일수록 r_a^k 로 약화)
+knn_k: 300            # top-K neighbors
+alpha: 0.7            # own_vec vs neighbor_mean blend
+
+# ---- Inference batch ----------------------------------------------------
+batch_size: 1024       # KNN compute batch
+top_n: 50              # ensemble + reranker 용
+items_per_user: 10     # submission 용
+
+# ---- wandb --------------------------------------------------------------
+wandb_entity: yooni0125-
+wandb_project: cy-commerce-recsys
+run_name: exp_007_tifu_knn
