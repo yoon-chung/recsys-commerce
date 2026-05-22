@@ -21,12 +21,20 @@ import json
 import sys
 from pathlib import Path
 
-import matplotlib
-
-matplotlib.use("Agg")
-import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
+
+try:
+    import matplotlib
+
+    matplotlib.use("Agg")
+    import matplotlib.pyplot as plt
+
+    HAS_MPL = True
+except ImportError:
+    HAS_MPL = False
+    print("[warn] matplotlib not installed -- PNG plots will be skipped. "
+          "CSV + summary.json still produced.")
 
 HERE = Path(__file__).resolve().parent
 PROJECT_ROOT = HERE.parent
@@ -132,14 +140,15 @@ print(f"  mean={a1['mean_overlap']:.2f} median={a1['median_overlap']:.0f} "
 print(f"  zero overlap users: {a1['pct_zero_overlap']*100:.1f}%, "
       f"full overlap: {a1['pct_full_overlap']*100:.1f}%")
 
-plt.figure(figsize=(8, 4))
-overlap.value_counts().sort_index().plot(kind="bar", color="steelblue")
-plt.title("Per-user overlap: |TIFU top-10 ∩ BSARec top-10|")
-plt.xlabel("Overlap count (0-10)")
-plt.ylabel("# Users (all 638k)")
-plt.tight_layout()
-plt.savefig(OUT_DIR / "a1_overlap_histogram.png", dpi=120)
-plt.close()
+if HAS_MPL:
+    plt.figure(figsize=(8, 4))
+    overlap.value_counts().sort_index().plot(kind="bar", color="steelblue")
+    plt.title("Per-user overlap: |TIFU top-10 ∩ BSARec top-10|")
+    plt.xlabel("Overlap count (0-10)")
+    plt.ylabel("# Users (all 638k)")
+    plt.tight_layout()
+    plt.savefig(OUT_DIR / "a1_overlap_histogram.png", dpi=120)
+    plt.close()
 
 
 # ----------------------------------------------------------------------
@@ -187,23 +196,23 @@ a2_summary.to_csv(OUT_DIR / "a2_repeat_bins.csv", index=False)
 results["A2_repeat_bins"] = a2_summary.to_dict(orient="records")
 print(a2_summary.to_string(index=False))
 
-# Bar chart
-fig, ax = plt.subplots(figsize=(8, 5))
-x = np.arange(len(a2_summary))
-w = 0.35
-ax.bar(x - w/2, a2_summary["tifu_ndcg"], w, label="TIFU", color="steelblue")
-ax.bar(x + w/2, a2_summary["bsarec_ndcg"], w, label="BSARec", color="orange")
-ax.set_xticks(x)
-ax.set_xticklabels(a2_summary["bin"].astype(str), rotation=15)
-ax.set_ylabel("Mean NDCG@10")
-ax.set_title("A2. NDCG@10 by user repeat-ratio bin")
-ax.legend()
-for i, row in a2_summary.iterrows():
-    ax.text(i, max(row["tifu_ndcg"], row["bsarec_ndcg"]) + 0.005,
-            f"n={row['n_users']}", ha="center", fontsize=8)
-plt.tight_layout()
-plt.savefig(OUT_DIR / "a2_repeat_bins.png", dpi=120)
-plt.close()
+w = 0.35  # used by A3/A4 too
+if HAS_MPL:
+    fig, ax = plt.subplots(figsize=(8, 5))
+    x = np.arange(len(a2_summary))
+    ax.bar(x - w/2, a2_summary["tifu_ndcg"], w, label="TIFU", color="steelblue")
+    ax.bar(x + w/2, a2_summary["bsarec_ndcg"], w, label="BSARec", color="orange")
+    ax.set_xticks(x)
+    ax.set_xticklabels(a2_summary["bin"].astype(str), rotation=15)
+    ax.set_ylabel("Mean NDCG@10")
+    ax.set_title("A2. NDCG@10 by user repeat-ratio bin")
+    ax.legend()
+    for i, row in a2_summary.iterrows():
+        ax.text(i, max(row["tifu_ndcg"], row["bsarec_ndcg"]) + 0.005,
+                f"n={row['n_users']}", ha="center", fontsize=8)
+    plt.tight_layout()
+    plt.savefig(OUT_DIR / "a2_repeat_bins.png", dpi=120)
+    plt.close()
 
 
 # ----------------------------------------------------------------------
@@ -231,21 +240,22 @@ a3_summary.to_csv(OUT_DIR / "a3_seqlen_bins.csv", index=False)
 results["A3_seqlen_bins"] = a3_summary.to_dict(orient="records")
 print(a3_summary.to_string(index=False))
 
-fig, ax = plt.subplots(figsize=(8, 5))
-x = np.arange(len(a3_summary))
-ax.bar(x - w/2, a3_summary["tifu_ndcg"], w, label="TIFU", color="steelblue")
-ax.bar(x + w/2, a3_summary["bsarec_ndcg"], w, label="BSARec", color="orange")
-ax.set_xticks(x)
-ax.set_xticklabels(a3_summary["bin"].astype(str))
-ax.set_ylabel("Mean NDCG@10")
-ax.set_title("A3. NDCG@10 by user sequence length (BSARec max_seq=50 cap)")
-ax.legend()
-for i, row in a3_summary.iterrows():
-    ax.text(i, max(row["tifu_ndcg"], row["bsarec_ndcg"]) + 0.005,
-            f"n={row['n_users']}", ha="center", fontsize=8)
-plt.tight_layout()
-plt.savefig(OUT_DIR / "a3_seqlen_bins.png", dpi=120)
-plt.close()
+if HAS_MPL:
+    fig, ax = plt.subplots(figsize=(8, 5))
+    x = np.arange(len(a3_summary))
+    ax.bar(x - w/2, a3_summary["tifu_ndcg"], w, label="TIFU", color="steelblue")
+    ax.bar(x + w/2, a3_summary["bsarec_ndcg"], w, label="BSARec", color="orange")
+    ax.set_xticks(x)
+    ax.set_xticklabels(a3_summary["bin"].astype(str))
+    ax.set_ylabel("Mean NDCG@10")
+    ax.set_title("A3. NDCG@10 by user sequence length (BSARec max_seq=50 cap)")
+    ax.legend()
+    for i, row in a3_summary.iterrows():
+        ax.text(i, max(row["tifu_ndcg"], row["bsarec_ndcg"]) + 0.005,
+                f"n={row['n_users']}", ha="center", fontsize=8)
+    plt.tight_layout()
+    plt.savefig(OUT_DIR / "a3_seqlen_bins.png", dpi=120)
+    plt.close()
 
 
 # ----------------------------------------------------------------------
@@ -281,21 +291,22 @@ a4_summary.to_csv(OUT_DIR / "a4_item_pop_bins.csv", index=False)
 results["A4_item_pop_bins"] = a4_summary.to_dict(orient="records")
 print(a4_summary.to_string(index=False))
 
-fig, ax = plt.subplots(figsize=(8, 5))
-x = np.arange(len(a4_summary))
-ax.bar(x - w/2, a4_summary["tifu_hit_rate"], w, label="TIFU", color="steelblue")
-ax.bar(x + w/2, a4_summary["bsarec_hit_rate"], w, label="BSARec", color="orange")
-ax.set_xticks(x)
-ax.set_xticklabels(a4_summary["pop_bin"].astype(str))
-ax.set_ylabel("Hit rate (% GT in top-10)")
-ax.set_title("A4. Hit rate by GT item popularity")
-ax.legend()
-for i, row in a4_summary.iterrows():
-    ax.text(i, max(row["tifu_hit_rate"], row["bsarec_hit_rate"]) + 0.005,
-            f"n={row['n_gt']}", ha="center", fontsize=8)
-plt.tight_layout()
-plt.savefig(OUT_DIR / "a4_item_pop_bins.png", dpi=120)
-plt.close()
+if HAS_MPL:
+    fig, ax = plt.subplots(figsize=(8, 5))
+    x = np.arange(len(a4_summary))
+    ax.bar(x - w/2, a4_summary["tifu_hit_rate"], w, label="TIFU", color="steelblue")
+    ax.bar(x + w/2, a4_summary["bsarec_hit_rate"], w, label="BSARec", color="orange")
+    ax.set_xticks(x)
+    ax.set_xticklabels(a4_summary["pop_bin"].astype(str))
+    ax.set_ylabel("Hit rate (% GT in top-10)")
+    ax.set_title("A4. Hit rate by GT item popularity")
+    ax.legend()
+    for i, row in a4_summary.iterrows():
+        ax.text(i, max(row["tifu_hit_rate"], row["bsarec_hit_rate"]) + 0.005,
+                f"n={row['n_gt']}", ha="center", fontsize=8)
+    plt.tight_layout()
+    plt.savefig(OUT_DIR / "a4_item_pop_bins.png", dpi=120)
+    plt.close()
 
 
 # ----------------------------------------------------------------------
@@ -318,19 +329,20 @@ print(f"  tie       : {a5['pct_tie']*100:.1f}% "
       f"(both zero: {a5['pct_tie_both_zero']*100:.1f}%)")
 print(f"  mean delta: {a5['mean_delta']:.4f}")
 
-plt.figure(figsize=(8, 4))
-nonzero = delta[delta != 0]
-plt.hist(nonzero, bins=30, color="steelblue", edgecolor="black")
-plt.axvline(0, color="red", linestyle="--", label="tie")
-plt.axvline(delta.mean(), color="green", linestyle="-", label=f"mean={delta.mean():.4f}")
-plt.title(f"A5. Per-user NDCG@10 delta (TIFU - BSARec), nonzero only "
-          f"(n={len(nonzero)})")
-plt.xlabel("delta")
-plt.ylabel("# Users")
-plt.legend()
-plt.tight_layout()
-plt.savefig(OUT_DIR / "a5_delta_histogram.png", dpi=120)
-plt.close()
+if HAS_MPL:
+    plt.figure(figsize=(8, 4))
+    nonzero = delta[delta != 0]
+    plt.hist(nonzero, bins=30, color="steelblue", edgecolor="black")
+    plt.axvline(0, color="red", linestyle="--", label="tie")
+    plt.axvline(delta.mean(), color="green", linestyle="-", label=f"mean={delta.mean():.4f}")
+    plt.title(f"A5. Per-user NDCG@10 delta (TIFU - BSARec), nonzero only "
+              f"(n={len(nonzero)})")
+    plt.xlabel("delta")
+    plt.ylabel("# Users")
+    plt.legend()
+    plt.tight_layout()
+    plt.savefig(OUT_DIR / "a5_delta_histogram.png", dpi=120)
+    plt.close()
 
 
 # ----------------------------------------------------------------------
