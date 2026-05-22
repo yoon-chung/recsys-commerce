@@ -36,13 +36,12 @@
 | exp_003 | DiffRec | diffusion | 0.1543 | 0.2257 | — | DONE (< ALS, paradigm coverage 만) |
 | exp_004 | FEARec | sequential FFT+autocorr | — | — | — | FAILED (RecBole 1.2 hang) |
 | exp_005 | BERT4Rec | bidirectional MLM | 0.2158 | 0.3061 | — | DONE (killed ep13, 추정 public ~0.085 → 제출 X) |
-| exp_006 | BSARec+CL4SRec hybrid | sequential + contrastive | — | — | — | QUEUED (novel, portfolio piece) |
+| exp_006 | BSARec+CL hybrid (4w) | sequential + contrastive | 0.2347 | 0.3188 | — | DONE — LOO 0.2646/0.4441 했지만 our val 에선 BSARec 보다 ↓ (제출 X) |
 | **exp_007** | **TIFU-KNN (4m)** | **classical KNN + temporal freq** | **0.2922** | **0.3915** | **0.1175** | **DONE — new top, +20.5% vs BSARec** |
-| (예정) exp_007b | TIFU-KNN + multi-behavior weights | classical | — | — | — | QUEUED (cart=3 / purchase=5 ablation) |
-| (예정) exp_007c | TIFU-KNN α/K ablation | classical | — | — | — | QUEUED |
+| exp_008 | LLM-as-Reranker on TIFU top-50 | LLM rerank | — | — | — | IN PROGRESS (Solar API, PoC eval_users 928) |
 | (예정) | MB-STR | multi-behavior | — | — | — | Day 2-3 |
-| (예정) | LLM-as-Reranker | 2-stage LLM | — | — | — | Day 4 |
 | (예정) | ensemble v3 + LGBM reranker | fusion | — | — | — | Day 5 |
+| SKIP | exp_007b/c TIFU hyperparam sweeps | — | — | — | — | 원래 계획 X, 점수 chase 자제 |
 
 \* full-data 변종은 val 포함 학습 → self-val 인플레이션. 의사결정은 public 기준.
 
@@ -324,20 +323,59 @@
 
 ---
 
-## exp_006_bsarec_cl — QUEUED (Day 1C, novel combination)
+## exp_006_bsarec_cl — DONE 2026-05-22 (Day 1C, 제출 X)
 
-[code](./exp_006_bsarec_cl/) · **BSARec backbone + CL4SRec InfoNCE 보조 loss**. 두 논문 결합 자체가 novel (BSARec=AAAI24 attention only, CL4SRec=ICDE22 SASRec backbone).
+[code](./exp_006_bsarec_cl/) · BSARec backbone + CL4SRec InfoNCE 보조 loss (novel combination — 두 paper 첫 결합).
 
-**가설**:
-- BSARec: 99.78% view-dominant noise → FFT low-pass (검증됨, public 0.0975)
-- CL4SRec: 99.96% sparsity + median seq 6 → augmentation 이 sparse regime 에서 generalize
-- **함께**: periodicity + representation regularization 둘 다 커버
+**구현**: `BSARecCL(BSARec)` 클래스. `calculate_loss() = rec_loss + lmd · InfoNCE(z1, z2)`. z1, z2 = forward(aug1), forward(aug2). aug = crop / mask / reorder 중 random. RecBole left-padded 레이아웃에 맞춰 augmentation 재작성.
 
-**구현**: `BSARecCL(BSARec)` 클래스. `calculate_loss()` 에서 `rec_loss + lmd · InfoNCE(z1, z2)`. `z1, z2 = forward(aug1), forward(aug2)`. aug = crop / mask / reorder 중 random. RecBole left-padded 레이아웃에 맞춰 augmentation 재작성 (팀원 right-padded 코드 차용 후 length tracking 추가).
+**하이퍼**: BSARec (alpha=0.7, c=5) + CL4SRec (lmd=0.1, tau=1.0, crop=0.4, mask=0.3, reorder=0.4) 모두 paper default.
 
-**하이퍼**: BSARec (alpha=0.7, c=5) + CL4SRec (lmd=0.1, tau=1.0, crop_ratio=0.4, mask_ratio=0.3, reorder_ratio=0.4) — 모두 paper default.
+**학습**: 4w_holdout (cy_commerce_4w 데이터셋, exp_002b 와 동일). epoch 51 best @ LOO 0.2646, 211분 (3.5h).
 
-**실행**: BERT4Rec 종료 후 (kill 또는 자연 종료) 즉시.
+**결과**:
+
+| 메트릭 | RecBole LOO | our 7-day val | Δ |
+|---|---:|---:|---:|
+| NDCG@10 | 0.2646 | **0.2347** | −0.0299 |
+| recall@10 | 0.4441 | **0.3188** | **−0.1253** |
+
+**예상치 못한 발견** — LOO 강력하지만 our task transfer 약함:
+- BSARec 4w_holdout (exp_002b): LOO 0.2658 → our val 0.2414 (Δ −0.024)
+- **BSARec+CL hybrid**: LOO 0.2646 → our val 0.2347 (Δ −0.030) — gap 더 큼
+- LOO recall 0.4441 (BSARec 보다 +0.10) 의 시그널이 our val 에는 transfer 안 됨
+
+**Mechanism (BERT4Rec 와 같은 패턴)**:
+- CL4SRec aug 의 학습 신호 = "augmented view 두 개가 같은 user 시퀀스에서 왔다" 의 contrastive signal
+- LOO 의 last-item masking 과 유사한 self-supervised 학습 구조 → LOO 메트릭에 over-specialized
+- multi-target purchase task (7-day window) 에 transfer 약함
+- **2번째 사례 (BERT4Rec 도 같은 패턴)** → portfolio talking point: **"self-supervised/contrastive 가 LOO 에 over-fit 하는 함정"**
+
+**Cold-start 38,523명** (BSARec 4w_holdout 의 14k 대비 2.7배 많음):
+- 같은 cy_commerce_4w 데이터셋이지만 RecBole 의 user_inter_num_interval 필터가 BSARecCL 학습 시 다르게 작동한 듯
+- popularity fallback 비중 ↑ → public 점수에 negative 영향
+
+**예상 public**: 0.2347 / 2.53 ≈ **0.093** (BSARec 4w_holdout 0.0955 보다 ↓, BSARec 4w_full 0.0975 보다 ↓, TIFU 0.1175 보다 한참 ↓) → **제출 X**.
+
+**Portfolio talking point 강화**:
+> "BERT4Rec 와 BSARec+CL hybrid 둘 다 RecBole leave-one-out 에선 강력 (recall 0.35 / 0.44) 했지만 우리 7-day multi-purchase val 에선 BSARec causal next-item 보다 낮았다. **Self-supervised / contrastive training 이 single-token LOO task 에 over-specialize 되는 함정** — RecBole default metric (LOO) 이 우리 evaluation task 와 misalign 될 수 있는 사례를 데이터로 잡음. **모델 training task ↔ inference task 의 정합성** 검증의 RecSys 특유 함정."
+
+**Ensemble 가치**: LOO 기반 recall 0.44 시그널이 our val 에서 0.32 로 떨어진 만큼 ensemble 가치도 작아짐 (BSARec recall 0.33 과 거의 동일). 후보 set 다양성으로 보면 약함.
+
+---
+
+## exp_007 추가 분석 — TIFU vs BSARec 진단 노트북
+
+별도 deliverable: [docs/diagnosis_tifu_vs_bsarec.ipynb](../docs/diagnosis_tifu_vs_bsarec.ipynb) · 24 cells (15 markdown + 9 code), pre-filled outputs.
+
+5개 segment-level 분석으로 "classical 이 deep 을 이긴 이유" 정량 증명:
+- **A2 repeat-buyer (56% of eval)**: TIFU +0.053 NDCG — frequency 가설 확정
+- **A3 long-history user (21%)**: TIFU +0.091 NDCG — BSARec max_seq=50 cap 정보 손실
+- **A4 top-100 popular items (34% of GT)**: TIFU +9.2% hit rate
+- **A1 prediction overlap mean 36%** — 64% diverge, ensemble 가치
+- **A5 per-user**: TIFU win 19.3% vs BSARec win 11.5% (1.68배)
+
+전체 분석 + interview talking point 는 ipynb 참고.
 
 ---
 
@@ -350,16 +388,14 @@
 | Day | Exp | Window | 상태 | 비고 |
 |---|---|---|---|---|
 | 1A | exp_004 FEARec | — | FAILED | RecBole 1.2 hang |
-| 1B | exp_005 BERT4Rec | 4m | killed at ep13 (plateau 0.2006) | ensemble second sequential signal 확보 (recall 0.3485) |
-| **1B+** | **exp_007 TIFU-KNN** | **4m** | **DONE (0.1175, new top)** | **classical KNN — paradigm 변화 + new top** |
-| 1C | exp_007b TIFU + multi-behavior weights | 4m | NEXT (점수 lever) | cart=3, purchase=5 ablation. 팀원 0.1431 까지 가는 핵심 추정 |
-| 1D | exp_007c TIFU α/K ablation | 4m | NEXT | alpha 0.5/0.8, knn_k 500/1000 |
-| 1E | exp_006 BSARec+CL hybrid | 4w | portfolio piece | novel combination talking point only (점수 ceiling < TIFU) |
-| 2-3 | MB-STR | 4m | 예정 | multi-behavior transformer paradigm + 직접 비교: BSARec vs MB-STR 의 multi-behavior 효과 |
-| 4 | LLM-as-Reranker on TIFU top-50 | base 따름 | 예정 | TIFU 가 base 가 됨 (highest recall) |
-| 5 | ensemble v3 + LGBM reranker | mixed | 예정 | TIFU + BSARec + BERT4Rec 후보 결합, very diverse signal |
-| 5 final | Winner retrain (val 포함) | model-specific | 예정 | TIFU best variant → full retrain (+0.002 추정) |
-| Buffer | CL4SRec 단독 port | 4w | 옵션 | 시간 남으면 |
+| 1B | exp_005 BERT4Rec | 4m | DONE (killed ep13, 제출 X) | LOO 0.2006 / our val 0.2158, task-mismatch lesson |
+| **1B+** | **exp_007 TIFU-KNN** | **4m** | **DONE — public 0.1175 (new top)** | **classical KNN +20.5% vs BSARec, 5 segment 진단 분석 완료** |
+| 1C | exp_006 BSARec+CL hybrid | 4w | DONE (제출 X) | LOO 0.2646 → our val 0.2347, **LOO over-spec 2번째 사례** (BERT4Rec 와 같은 패턴) |
+| 2 | exp_008 LLM-as-Reranker | base TIFU | IN PROGRESS | Solar API on TIFU top-50, PoC eval_users 928 → full |
+| 2-3 | MB-STR | 4m | 예정 | multi-behavior transformer paradigm |
+| 4 | ensemble v3 + LGBM reranker | mixed | 예정 | TIFU + BSARec + (BERT4Rec/BSARec+CL 미포함 후보) |
+| 4 final | Winner retrain (val 포함) | model-specific | 예정 | TIFU best variant → full retrain (+0.002 추정) |
+| Buffer | CL4SRec 단독 port / Solar Pro2 ablation | 4w | 옵션 | 시간 남으면 |
 
 **Window 선택 원리** (model mechanism 별):
 - **Sequential causal** (BSARec, SASRec): recency 유리 → 4w
@@ -368,6 +404,19 @@
 - **Reranker** (LLM, LGBM): candidate generator window 따라감
 
 새 모델마다 4종 window 다 돌리지 않음. mechanism 기반 1개만 선택, Day 5 final 에서 winner 만 val-포함 retrain.
+
+---
+
+**2026-05-22 추가 lesson — LOO over-specialization 2건 발견**:
+
+| Model | RecBole LOO NDCG | our 7-day val NDCG | Δ |
+|---|---:|---:|---:|
+| BSARec (causal) | 0.2658 | 0.2414 | −0.0244 (정상) |
+| **BERT4Rec (bidirectional MLM)** | **0.2006** | **0.2158** | **+0.0152 (반대 방향)** |
+| **BSARec+CL hybrid (contrastive)** | **0.2646** | **0.2347** | **−0.0299 (gap 더 큼)** |
+| TIFU-KNN | — (LOO 미사용) | 0.2922 | — |
+
+**Pattern**: Self-supervised (BERT4Rec Cloze) + contrastive (BSARec+CL InfoNCE) 가 RecBole LOO 의 last-item-masking task 에 over-specialized → multi-target 7-day val 에는 transfer 약함. **RecBole default metric 이 우리 task 와 misalign 될 수 있다는 사례 2건 확보** — portfolio talking point.
 
 ---
 
