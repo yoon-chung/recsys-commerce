@@ -90,7 +90,7 @@ def main() -> None:
     # ---- 1. Rebuild RecBole dataset + model + load checkpoint ------------
     # Pass the class so RecBole skips get_model() lookup + lightgbm dependency.
     config = Config(
-        model=BSARec,
+        model=BSARecCL,
         config_file_list=[args.config],
         dataset=our_cfg["dataset"],
     )
