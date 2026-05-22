@@ -1,4 +1,4 @@
-"""exp_005_cl4srec / train.py -- CL4SRec via RecBole built-in.
+"""exp_005_bert4rec / train.py -- BERT4Rec via RecBole built-in.
 
 Same driver pattern as exp_002 / exp_004; only the model class differs.
 We pass the class directly to Config(model=...) to skip RecBole's
@@ -22,7 +22,7 @@ from recbole.config import Config  # noqa: E402
 from recbole.data import create_dataset, data_preparation  # noqa: E402
 from recbole.trainer import Trainer  # noqa: E402
 from recbole.utils import init_seed  # noqa: E402
-from recbole.model.sequential_recommender import CL4SRec  # noqa: E402
+from recbole.model.sequential_recommender import BERT4Rec  # noqa: E402
 
 logger = logging.getLogger(__name__)
 
@@ -44,7 +44,7 @@ def main() -> None:
     saved_dir.mkdir(parents=True, exist_ok=True)
 
     config = Config(
-        model=CL4SRec,
+        model=BERT4Rec,
         config_file_list=[args.config],
         dataset=our_cfg["dataset"],
     )
@@ -60,12 +60,12 @@ def main() -> None:
                 f"{dataset.inter_num:,}")
     train_data, valid_data, _ = data_preparation(config, dataset)
 
-    model = CL4SRec(config, train_data.dataset).to(config["device"])
+    model = BERT4Rec(config, train_data.dataset).to(config["device"])
     n_params = sum(p.numel() for p in model.parameters())
-    logger.info("CL4SRec model -- %s params (%.2fM)", f"{n_params:,}", n_params / 1e6)
-    logger.info("  n_layers=%d hidden=%d tau=%.2f lmd=%.2f sim=%s",
+    logger.info("BERT4Rec model -- %s params (%.2fM)", f"{n_params:,}", n_params / 1e6)
+    logger.info("  n_layers=%d hidden=%d mask_ratio=%.2f max_seq=%d",
                 config["n_layers"], config["hidden_size"],
-                config["tau"], config["lmd"], config["sim"])
+                config["mask_ratio"], config["MAX_ITEM_LIST_LENGTH"])
 
     wandb_run = None
     if args.use_wandb:

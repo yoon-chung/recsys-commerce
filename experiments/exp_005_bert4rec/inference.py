@@ -1,9 +1,12 @@
-"""exp_005_cl4srec / inference.py -- score 638k users via CL4SRec.
+"""exp_005_bert4rec / inference.py -- score 638k users via BERT4Rec.
 
-CL4SRec has a SASRec backbone, so its forward signature is
-(item_seq, item_seq_len) -> seq_output [B, H]. Inference is the same
-matmul-with-item-embedding pattern as exp_002_bsarec. The contrastive
-loss only affects training; inference is plain sequence encoding.
+BERT4Rec is bidirectional and trained via Cloze (masked-item) objective.
+Inference cannot use the BSARec-style direct forward + matmul shortcut:
+the model needs a [MASK] token appended to the user's sequence and the
+prediction is read off the mask position, not the last real token.
+
+We use model.full_sort_predict(Interaction) which handles
+reconstruct_test_data (mask append) and gather_indexes internally.
 """
 
 from __future__ import annotations
@@ -27,8 +30,9 @@ import yaml
 
 from recbole.config import Config  # noqa: E402
 from recbole.data import create_dataset, data_preparation  # noqa: E402
+from recbole.data.interaction import Interaction  # noqa: E402
 from recbole.utils import init_seed  # noqa: E402
-from recbole.model.sequential_recommender import CL4SRec  # noqa: E402
+from recbole.model.sequential_recommender import BERT4Rec  # noqa: E402
 
 from core.data_loader import load_train_data  # noqa: E402
 from core.validation import time_based_split  # noqa: E402
@@ -68,22 +72,22 @@ def main() -> None:
     out_dir.mkdir(parents=True, exist_ok=True)
 
     config = Config(
-        model=CL4SRec,
+        model=BERT4Rec,
         config_file_list=[args.config],
         dataset=our_cfg["dataset"],
     )
     init_seed(config["seed"], config["reproducibility"])
     dataset = create_dataset(config)
     train_data, _, _ = data_preparation(config, dataset)
-    model = CL4SRec(config, train_data.dataset).to(config["device"])
+    model = BERT4Rec(config, train_data.dataset).to(config["device"])
 
     ckpt_pointer = saved_dir / "best_ckpt_path.txt"
     if ckpt_pointer.exists():
         ckpt_path = Path(ckpt_pointer.read_text().strip())
     else:
-        candidates = sorted(saved_dir.glob("CL4SRec-*.pth"))
+        candidates = sorted(saved_dir.glob("BERT4Rec-*.pth"))
         if not candidates:
-            raise FileNotFoundError(f"no CL4SRec checkpoint under {saved_dir}")
+            raise FileNotFoundError(f"no BERT4Rec checkpoint under {saved_dir}")
         ckpt_path = candidates[-1]
     state = torch.load(ckpt_path, map_location=config["device"])
     model.load_state_dict(state["state_dict"])
@@ -97,6 +101,12 @@ def main() -> None:
     pad_token = item_field2id.get("[PAD]", 0)
     logger.info("RecBole item vocab: %s items (pad=%d)",
                 f"{n_items_recbole:,}", pad_token)
+
+    # BERT4Rec field names
+    item_seq_field = model.ITEM_SEQ
+    item_seq_len_field = model.ITEM_SEQ_LEN
+    logger.info("interaction fields -- item_seq=%s, len=%s",
+                item_seq_field, item_seq_len_field)
 
     df_full = load_train_data(our_cfg["train_data"])
     train_df, _ = time_based_split(
@@ -148,12 +158,13 @@ def main() -> None:
     with torch.no_grad():
         for start in range(0, n_known, batch_size):
             end = min(start + batch_size, n_known)
-            item_seq = torch.tensor(known_seqs[start:end], dtype=torch.long, device=device)
-            item_seq_len = torch.tensor(known_seq_lens[start:end], dtype=torch.long, device=device)
+            interaction_data = {
+                item_seq_field: torch.tensor(known_seqs[start:end], dtype=torch.long),
+                item_seq_len_field: torch.tensor(known_seq_lens[start:end], dtype=torch.long),
+            }
+            interaction = Interaction(interaction_data).to(device)
 
-            seq_output = model.forward(item_seq, item_seq_len)               # [B, H]
-            all_item_emb = model.item_embedding.weight                       # [V, H]
-            scores = torch.matmul(seq_output, all_item_emb.transpose(0, 1))  # [B, V]
+            scores = model.full_sort_predict(interaction)   # [B, V]
             scores[:, pad_token] = -float("inf")
 
             top_scores, top_idx = scores.topk(top_n, dim=1)

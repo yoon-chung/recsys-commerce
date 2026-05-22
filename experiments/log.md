@@ -39,8 +39,8 @@
 | exp_002g | BSARec (2w_full, spike+) | sequential | 0.2479* | 0.3304* | **0.0975** | DONE — tied with 002e |
 | exp_002f | BSARec (1w_full, spike만) | sequential | 0.2408* | 0.3190* | (제출 X) | DONE — spike-only training, less data hurts |
 | exp_003 | DiffRec | diffusion | 0.1543 | 0.2257 | (제출 X) | DONE — self-val < ALS, 44% cold-start (filter side-effect). paradigm coverage 만 |
-| exp_004 | TiSASRec | sequential time-aware | — | — | — | QUEUED (Day 1A, EDA CV=4.12 fit) |
-| exp_005 | CL4SRec | sequential contrastive | — | — | — | QUEUED (Day 1B, sparsity 99.96% fit) |
+| exp_004 | FEARec | sequential FFT+autocorr | — | — | — | QUEUED (Day 1A, replaces TiSASRec — RecBole 1.2 미통합) |
+| exp_005 | BERT4Rec | sequential bidirectional MLM | — | — | — | QUEUED (Day 1B, replaces CL4SRec — RecBole 1.2 미통합, 다른 mechanism 으로 ensemble 다양성) |
 | (예정) | MB-STR | multi-behavior | — | — | — | Day 2-3 (paper port, view/cart/purchase 분리) |
 | (예정) | LLM-as-Reranker | 2-stage LLM | — | — | — | Day 4 |
 | (예정) | ensemble v3 | weighted RRF | — | — | — | Day 5 |

@@ -1,12 +1,12 @@
-"""exp_004_tisasrec / train.py -- TiSASRec via RecBole built-in.
+"""exp_004_fearec / train.py -- FEARec via RecBole built-in.
 
 Same training driver pattern as exp_002_bsarec, but we import RecBole's
-built-in TiSASRec class (no custom port needed). Passing the CLASS to
+built-in FEARec class (no custom port needed). Passing the CLASS to
 Config(model=...) avoids RecBole's get_model() lookup which would pull
 the exlib_recommender package and its lightgbm dependency.
 
 Artifacts -> ./saved/ (gitignored):
-    TiSASRec-<timestamp>.pth
+    FEARec-<timestamp>.pth
     wandb_run_id.txt
     best_ckpt_path.txt
 
@@ -32,7 +32,7 @@ from recbole.config import Config  # noqa: E402
 from recbole.data import create_dataset, data_preparation  # noqa: E402
 from recbole.trainer import Trainer  # noqa: E402
 from recbole.utils import init_seed  # noqa: E402
-from recbole.model.sequential_recommender import TiSASRec  # noqa: E402
+from recbole.model.sequential_recommender import FEARec  # noqa: E402
 
 logger = logging.getLogger(__name__)
 
@@ -54,7 +54,7 @@ def main() -> None:
     saved_dir.mkdir(parents=True, exist_ok=True)
 
     config = Config(
-        model=TiSASRec,
+        model=FEARec,
         config_file_list=[args.config],
         dataset=our_cfg["dataset"],
     )
@@ -70,12 +70,13 @@ def main() -> None:
                 f"{dataset.inter_num:,}")
     train_data, valid_data, _ = data_preparation(config, dataset)
 
-    model = TiSASRec(config, train_data.dataset).to(config["device"])
+    model = FEARec(config, train_data.dataset).to(config["device"])
     n_params = sum(p.numel() for p in model.parameters())
-    logger.info("TiSASRec model -- %s params (%.2fM)", f"{n_params:,}", n_params / 1e6)
-    logger.info("  n_layers=%d hidden=%d TIME_SPAN=%d max_seq=%d",
+    logger.info("FEARec model -- %s params (%.2fM)", f"{n_params:,}", n_params / 1e6)
+    logger.info("  n_layers=%d hidden=%d topk_factor=%d lmd=%.2f fredom=%s",
                 config["n_layers"], config["hidden_size"],
-                config["TIME_SPAN"], config["MAX_ITEM_LIST_LENGTH"])
+                config.get("topk_factor", -1), config.get("lmd", 0.0),
+                config.get("fredom", False))
 
     wandb_run = None
     if args.use_wandb:
