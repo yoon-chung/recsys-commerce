@@ -78,7 +78,10 @@ class MBSTR(BSARec):
     def calculate_loss(self, interaction):
         item_seq = interaction[self.ITEM_SEQ]
         item_seq_len = interaction[self.ITEM_SEQ_LEN]
-        behavior_seq = interaction.get(self.BEHAVIOR_FIELD, None)
+        try:
+            behavior_seq = interaction[self.BEHAVIOR_FIELD]
+        except (KeyError, AttributeError):
+            behavior_seq = None
 
         seq_output = self.forward(item_seq, item_seq_len, behavior_seq)
 
@@ -95,7 +98,10 @@ class MBSTR(BSARec):
     def predict(self, interaction):
         item_seq = interaction[self.ITEM_SEQ]
         item_seq_len = interaction[self.ITEM_SEQ_LEN]
-        behavior_seq = interaction.get(self.BEHAVIOR_FIELD, None)
+        try:
+            behavior_seq = interaction[self.BEHAVIOR_FIELD]
+        except (KeyError, AttributeError):
+            behavior_seq = None
         test_item = interaction[self.ITEM_ID]
         seq_output = self.forward(item_seq, item_seq_len, behavior_seq)
         test_item_emb = self.item_embedding(test_item)
@@ -105,7 +111,10 @@ class MBSTR(BSARec):
     def full_sort_predict(self, interaction):
         item_seq = interaction[self.ITEM_SEQ]
         item_seq_len = interaction[self.ITEM_SEQ_LEN]
-        behavior_seq = interaction.get(self.BEHAVIOR_FIELD, None)
+        try:
+            behavior_seq = interaction[self.BEHAVIOR_FIELD]
+        except (KeyError, AttributeError):
+            behavior_seq = None
         seq_output = self.forward(item_seq, item_seq_len, behavior_seq)
         test_items_emb = self.item_embedding.weight
         scores = torch.matmul(seq_output, test_items_emb.transpose(0, 1))
