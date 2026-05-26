@@ -64,39 +64,56 @@ def main() -> None:
 
     import lightgbm as lgb  # noqa: PLC0415
 
-    # ---- 1. Load features ----------------------------------------------
-    logger.info("loading features ...")
-    df_all = pd.read_parquet(args.features)
-    feat_cols = select_feature_cols(df_all)
-    logger.info("all features: %s rows, %d feature cols",
-                f"{len(df_all):,}", len(feat_cols))
+    # ---- 1. Locate feature chunks --------------------------------------
+    features_path = Path(args.features)
+    if features_path.is_dir():
+        chunk_paths = sorted(features_path.glob("part_*.parquet"))
+    else:
+        chunk_paths = [features_path]
+    logger.info("found %d feature parquet file(s) at %s", len(chunk_paths), features_path)
 
     # ---- 2. Load fold models -------------------------------------------
-    fold_models = sorted(saved_dir.glob("lgbm_fold*.txt"))
-    logger.info("found %d fold models", len(fold_models))
+    fold_models_paths = sorted(saved_dir.glob("lgbm_fold*.txt"))
+    logger.info("found %d fold models", len(fold_models_paths))
+    boosters = [lgb.Booster(model_file=str(fp)) for fp in fold_models_paths]
 
-    # ---- 3. Predict (ensemble across folds) ----------------------------
-    preds_acc = np.zeros(len(df_all), dtype=np.float64)
-    X = df_all[feat_cols]
-    t0 = time.time()
-    for fp in fold_models:
-        model = lgb.Booster(model_file=str(fp))
-        preds_acc += model.predict(X)
-    preds_acc /= len(fold_models)
-    logger.info("scoring done in %.1fs", time.time() - t0)
-    df_all["lgbm_score"] = preds_acc.astype(np.float32)
-
-    # ---- 4. Top-10 per user --------------------------------------------
-    pred_df = df_all[["user_id", "item_id", "lgbm_score"]].rename(columns={"lgbm_score": "score"})
-    pred_df["rank"] = (
-        pred_df.groupby("user_id")["score"]
-        .rank(method="first", ascending=False)
-        .astype(np.int32)
-    )
+    # ---- 3. Per-chunk predict + top-50 per user (memory-tight) --------
     top_n = 50
-    pred_df = pred_df[pred_df["rank"] <= top_n].copy()
+    pred_parts = []
+    t0 = time.time()
+    for i, cp in enumerate(chunk_paths):
+        df_c = pd.read_parquet(cp)
+        if i == 0:
+            feat_cols = select_feature_cols(df_c)
+            logger.info("feature cols (n=%d): %s", len(feat_cols), feat_cols[:6] + ["..."])
+        X = df_c[feat_cols]
+        acc = np.zeros(len(df_c), dtype=np.float64)
+        for b in boosters:
+            acc += b.predict(X)
+        acc /= len(boosters)
+        del X
+
+        out_c = df_c[["user_id", "item_id"]].copy()
+        out_c["score"] = acc.astype(np.float32)
+        del df_c, acc
+
+        out_c["rank"] = (
+            out_c.groupby("user_id")["score"]
+            .rank(method="first", ascending=False)
+            .astype(np.int32)
+        )
+        out_c = out_c[out_c["rank"] <= top_n]
+        pred_parts.append(out_c)
+        logger.info("  chunk %d/%d: %s rows -> %s top-%d rows",
+                    i + 1, len(chunk_paths), f"{len(out_c) * 0 + 0:,}",  # not informative
+                    f"{len(out_c):,}", top_n)
+
+    pred_df = pd.concat(pred_parts, ignore_index=True)
+    del pred_parts
     pred_df = pred_df.sort_values(["user_id", "rank"], kind="mergesort").reset_index(drop=True)
     pred_df["score"] = pred_df["score"].astype(np.float64)
+    logger.info("scoring + top-%d done in %.1fs", top_n, time.time() - t0)
+
     pred_path = out_dir / "predictions.parquet"
     pred_df.to_parquet(pred_path)
     logger.info("wrote %s (%s rows, %s users)",
