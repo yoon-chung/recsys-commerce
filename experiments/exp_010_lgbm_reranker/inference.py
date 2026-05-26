@@ -45,7 +45,7 @@ def select_feature_cols(df: pd.DataFrame) -> list[str]:
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--config", default=str(HERE / "config.yaml"))
-    parser.add_argument("--features", default=str(HERE / "cache" / "features_all.parquet"))
+    parser.add_argument("--features", default=str(HERE / "cache" / "features_all"))
     parser.add_argument("--saved-dir", default=str(HERE / "saved"))
     parser.add_argument("--out-dir", default=str(HERE))
     args = parser.parse_args()

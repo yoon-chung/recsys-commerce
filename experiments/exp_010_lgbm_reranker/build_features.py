@@ -172,42 +172,32 @@ def build_user_item_history(train_df: pd.DataFrame, candidates: pd.DataFrame) ->
 # ----------------------------------------------------------------------
 # Feature group: user-item affinity (brand/category match)
 # ----------------------------------------------------------------------
-def build_user_item_affinity(train_df: pd.DataFrame, candidates: pd.DataFrame) -> pd.DataFrame:
-    """Brand/category match between user's history and candidate item."""
-    df = train_df.dropna(subset=["brand"]).copy()
-    # user's most common brand
+def build_affinity_lookups(train_df: pd.DataFrame) -> dict:
+    """Return small lookup Series (indexed by user_id / item_id) for brand+category top1."""
+    db = train_df.dropna(subset=["brand"])
     user_brand_top1 = (
-        df.groupby("user_id")["brand"]
+        db.groupby("user_id")["brand"]
         .agg(lambda s: s.mode().iat[0] if not s.empty else None)
-        .rename("user_top_brand")
     )
-    # item's brand
     item_brand = (
-        df.groupby("item_id")["brand"]
+        db.groupby("item_id")["brand"]
         .agg(lambda s: s.mode().iat[0] if not s.empty else None)
-        .rename("item_brand")
     )
-    # category same logic
-    dfc = train_df.dropna(subset=["category_code"])
+    dc = train_df.dropna(subset=["category_code"])
     user_cat_top1 = (
-        dfc.groupby("user_id")["category_code"]
+        dc.groupby("user_id")["category_code"]
         .agg(lambda s: s.mode().iat[0] if not s.empty else None)
-        .rename("user_top_category")
     )
     item_cat = (
-        dfc.groupby("item_id")["category_code"]
+        dc.groupby("item_id")["category_code"]
         .agg(lambda s: s.mode().iat[0] if not s.empty else None)
-        .rename("item_category")
     )
-
-    aff = candidates.merge(user_brand_top1, left_on="user_id", right_index=True, how="left")
-    aff = aff.merge(item_brand, left_on="item_id", right_index=True, how="left")
-    aff["brand_match"] = (aff["user_top_brand"] == aff["item_brand"]).fillna(False).astype(np.int8)
-
-    aff = aff.merge(user_cat_top1, left_on="user_id", right_index=True, how="left")
-    aff = aff.merge(item_cat, left_on="item_id", right_index=True, how="left")
-    aff["category_match"] = (aff["user_top_category"] == aff["item_category"]).fillna(False).astype(np.int8)
-    return aff[["user_id", "item_id", "brand_match", "category_match"]]
+    return {
+        "user_brand_top1": user_brand_top1,
+        "item_brand": item_brand,
+        "user_cat_top1": user_cat_top1,
+        "item_cat": item_cat,
+    }
 
 
 # ----------------------------------------------------------------------
@@ -281,66 +271,93 @@ def main() -> None:
         candidates = candidates.merge(user_act, on="user_id", how="left")
         logger.info("  done in %.1fs (cols=%d)", time.time() - t0, len(candidates.columns))
 
-    if fg.get("user_item_history", True):
-        logger.info("[D] user_item_history features ...")
-        t0 = time.time()
-        ui_hist = build_user_item_history(train_df, candidates)
-        logger.info("  hist built: %s rows, merging in chunks ...", f"{len(ui_hist):,}")
-        # chunked merge to keep peak memory low (cgroup limit ~60-80GB)
-        n_chunks = 8
-        user_ids_sorted = np.sort(candidates["user_id"].unique())
-        chunk_size = (len(user_ids_sorted) + n_chunks - 1) // n_chunks
-        merged_parts = []
-        for i in range(n_chunks):
-            users_chunk = set(user_ids_sorted[i * chunk_size:(i + 1) * chunk_size])
-            cand_chunk = candidates[candidates["user_id"].isin(users_chunk)]
-            hist_chunk = ui_hist[ui_hist["user_id"].isin(users_chunk)]
-            merged_parts.append(cand_chunk.merge(hist_chunk, on=["user_id", "item_id"], how="left"))
-            logger.info("    chunk %d/%d merged (%s rows)", i + 1, n_chunks, f"{len(merged_parts[-1]):,}")
-        del ui_hist
-        candidates = pd.concat(merged_parts, ignore_index=True)
-        del merged_parts
-        for col in ["ui_total_events", "ui_view", "ui_cart", "ui_purchase"]:
-            candidates[col] = candidates[col].fillna(0).astype(np.int16)
-        candidates["ui_days_since_last"] = candidates["ui_days_since_last"].fillna(999).astype(np.float32)
-        logger.info("  done in %.1fs (cols=%d)", time.time() - t0, len(candidates.columns))
+    # ---- 5. Pre-compute lookups for chunked [D]+[E]+label loop ---------
+    do_hist = fg.get("user_item_history", True)
+    do_aff = fg.get("user_item_affinity", True)
 
-    if fg.get("user_item_affinity", True):
-        logger.info("[E] user_item_affinity features ...")
-        t0 = time.time()
-        ui_aff = build_user_item_affinity(train_df, candidates)
-        candidates = candidates.merge(ui_aff, on=["user_id", "item_id"], how="left")
-        candidates["brand_match"] = candidates["brand_match"].fillna(0).astype(np.int8)
-        candidates["category_match"] = candidates["category_match"].fillna(0).astype(np.int8)
-        logger.info("  done in %.1fs (cols=%d)", time.time() - t0, len(candidates.columns))
+    ui_hist = build_user_item_history(train_df, candidates) if do_hist else None
+    if ui_hist is not None:
+        logger.info("[D] hist lookup built: %s rows", f"{len(ui_hist):,}")
 
-    # co-occurrence: TODO (시간 부족 시 skip)
-    if fg.get("co_occurrence", False):
-        logger.warning("[F] co_occurrence -- TODO, skipping")
+    aff_lk = build_affinity_lookups(train_df) if do_aff else None
+    if aff_lk is not None:
+        logger.info("[E] affinity lookups built (n_user_brand=%d, n_item_brand=%d)",
+                    len(aff_lk["user_brand_top1"]), len(aff_lk["item_brand"]))
 
-    # ---- 5. Labels (val_gt 기준) ----------------------------------------
     val_gt = pd.read_parquet((HERE / cfg["ease_saved"] / "val_gt.parquet").resolve())
     with open((HERE / cfg["ease_saved"] / "eval_users.json").resolve(), encoding="utf-8") as f:
         eval_users = set(json.load(f))
     val_gt_eval = val_gt[val_gt["user_id"].isin(eval_users)][["user_id", "item_id"]].copy()
     val_gt_eval["label"] = np.int8(1)
 
-    candidates = candidates.merge(val_gt_eval, on=["user_id", "item_id"], how="left")
-    candidates["label"] = candidates["label"].fillna(0).astype(np.int8)
-    # mark whether user is in eval_users (for train/eval split)
-    candidates["is_eval_user"] = candidates["user_id"].isin(eval_users).astype(np.int8)
+    if fg.get("co_occurrence", False):
+        logger.warning("[F] co_occurrence -- TODO, skipping")
 
-    n_pos = int(candidates["label"].sum())
-    n_eval_users = int(candidates[candidates["is_eval_user"] == 1]["user_id"].nunique())
-    logger.info("labels: %s positives across %s eval users", f"{n_pos:,}", f"{n_eval_users:,}")
+    # ---- 6. Chunked merge + write -------------------------------------
+    # features_all = directory of parquet files (read with pd.read_parquet(dir))
+    # peak memory: only one chunk in RAM at a time (~3GB) + lookups
+    out_dir = cache_dir / "features_all"
+    out_dir.mkdir(parents=True, exist_ok=True)
+    # clear stale parts
+    for p in out_dir.glob("part_*.parquet"):
+        p.unlink()
 
-    # ---- 6. Save -------------------------------------------------------
-    out_path = cache_dir / "features_all.parquet"
-    candidates.to_parquet(out_path)
-    logger.info("wrote %s (%s rows, %d cols, %.1f MB)",
-                out_path, f"{len(candidates):,}", len(candidates.columns),
-                out_path.stat().st_size / 1024**2)
-    logger.info("columns: %s", list(candidates.columns))
+    n_chunks = 8
+    user_ids_sorted = np.sort(candidates["user_id"].unique())
+    chunk_size = (len(user_ids_sorted) + n_chunks - 1) // n_chunks
+
+    n_pos_total = 0
+    n_eval_users_total = 0
+    n_rows_total = 0
+    t0 = time.time()
+    for i in range(n_chunks):
+        users_chunk = set(user_ids_sorted[i * chunk_size:(i + 1) * chunk_size])
+        cand_chunk = candidates[candidates["user_id"].isin(users_chunk)].copy()
+
+        # [D] history merge
+        if ui_hist is not None:
+            hist_chunk = ui_hist[ui_hist["user_id"].isin(users_chunk)]
+            cand_chunk = cand_chunk.merge(hist_chunk, on=["user_id", "item_id"], how="left")
+            for col in ["ui_total_events", "ui_view", "ui_cart", "ui_purchase"]:
+                cand_chunk[col] = cand_chunk[col].fillna(0).astype(np.int16)
+            cand_chunk["ui_days_since_last"] = cand_chunk["ui_days_since_last"].fillna(999).astype(np.float32)
+
+        # [E] affinity via map() lookups (no merge)
+        if aff_lk is not None:
+            cand_chunk["user_top_brand"] = cand_chunk["user_id"].map(aff_lk["user_brand_top1"])
+            cand_chunk["item_brand"] = cand_chunk["item_id"].map(aff_lk["item_brand"])
+            cand_chunk["brand_match"] = (
+                (cand_chunk["user_top_brand"] == cand_chunk["item_brand"])
+                .fillna(False).astype(np.int8)
+            )
+            cand_chunk["user_top_category"] = cand_chunk["user_id"].map(aff_lk["user_cat_top1"])
+            cand_chunk["item_category"] = cand_chunk["item_id"].map(aff_lk["item_cat"])
+            cand_chunk["category_match"] = (
+                (cand_chunk["user_top_category"] == cand_chunk["item_category"])
+                .fillna(False).astype(np.int8)
+            )
+
+        # labels
+        gt_chunk = val_gt_eval[val_gt_eval["user_id"].isin(users_chunk)]
+        cand_chunk = cand_chunk.merge(gt_chunk, on=["user_id", "item_id"], how="left")
+        cand_chunk["label"] = cand_chunk["label"].fillna(0).astype(np.int8)
+        cand_chunk["is_eval_user"] = cand_chunk["user_id"].isin(eval_users).astype(np.int8)
+
+        n_pos_total += int(cand_chunk["label"].sum())
+        n_eval_users_total += int(cand_chunk[cand_chunk["is_eval_user"] == 1]["user_id"].nunique())
+        n_rows_total += len(cand_chunk)
+
+        part_path = out_dir / f"part_{i:02d}.parquet"
+        cand_chunk.to_parquet(part_path)
+        logger.info("  chunk %d/%d: %s rows, %d cols, wrote %s (%.1f MB)",
+                    i + 1, n_chunks, f"{len(cand_chunk):,}", len(cand_chunk.columns),
+                    part_path.name, part_path.stat().st_size / 1024**2)
+        del cand_chunk
+
+    logger.info("all chunks written in %.1fs", time.time() - t0)
+    logger.info("totals: %s rows, %s positives across %s eval users",
+                f"{n_rows_total:,}", f"{n_pos_total:,}", f"{n_eval_users_total:,}")
+    logger.info("output dir: %s", out_dir)
 
 
 if __name__ == "__main__":
