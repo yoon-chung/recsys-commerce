@@ -1,0 +1,63 @@
+# exp_010_lgbm_reranker -- LightGBM reranker on Stage 1 candidates.
+#
+# Motivation: ensemble v3-v6 모두 dead-end (4 method × 9 configs all negative).
+# 팀원 path 가 같은 결론: ensemble (0.1432) -> LGBM reranker (0.1487, +0.0055).
+# Score-based 가중평균/RRF 가 못 잡는 lift 를 feature-engineered LGBM 이 잡음.
+#
+# Stage 1 candidates: union of top-50 across 5 models
+# Stage 2 LGBM: per-(user, candidate) feature vector -> binary score -> top-10
+
+# ---- Data ---------------------------------------------------------------
+train_data: /root/data/train.parquet
+sample_submission: /root/data/sample_submission.csv
+val_days: 7
+gt_event_types: [purchase]
+ease_saved: ../exp_001_ease/saved
+
+# ---- Stage 1 model predictions -----------------------------------------
+# 모두 절대 경로 (HERE 기준 resolve)
+model_predictions:
+  tifu:      ../exp_007b_tifu_mb/predictions.parquet     # multi-behavior, single best 0.2933
+  bsarec:    ../exp_002e_bsarec_4w_full/predictions.parquet
+  mbstr:     ../exp_009_mbstr/predictions.parquet
+  bsarec_cl: ../exp_006_bsarec_cl/predictions.parquet
+  bert4rec:  ../exp_005_bert4rec/predictions.parquet
+
+# ---- Candidate pool ----------------------------------------------------
+top_k_per_model: 50              # 각 모델 top-50 union
+items_per_user_output: 10
+
+# ---- Features ----------------------------------------------------------
+# Feature 그룹별 ablation 위해 categorized. ablation.py 에서 그룹 단위 on/off.
+feature_groups:
+  model_ranks: true        # 5 model × (rank, norm_score, in_top10)
+  item_popularity: true    # train total/purchase/cart/view counts, brand pop
+  user_activity: true      # total events, days_active, recency, repeat_ratio
+  user_item_history: true  # user 의 candidate item 과거 interaction
+  user_item_affinity: true # brand/category/price match
+  co_occurrence: false     # 시간 부족 시 false (구현 복잡)
+
+# ---- LightGBM hyperparameters -----------------------------------------
+lgbm:
+  objective: binary
+  metric: binary_logloss
+  learning_rate: 0.05
+  num_leaves: 63
+  max_depth: 7
+  min_data_in_leaf: 50
+  feature_fraction: 0.8
+  bagging_fraction: 0.8
+  bagging_freq: 5
+  lambda_l1: 0.1
+  lambda_l2: 0.1
+  num_boost_round: 1000
+  early_stopping_rounds: 50
+
+# ---- Training ----------------------------------------------------------
+n_folds: 5            # eval_users 928명 5-fold CV
+random_seed: 42
+
+# ---- wandb ------------------------------------------------------------
+wandb_entity: yooni0125-
+wandb_project: cy-commerce-recsys
+run_name: exp_010_lgbm_reranker
