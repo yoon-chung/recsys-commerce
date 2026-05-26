@@ -147,25 +147,26 @@ def build_user_activity(train_df: pd.DataFrame) -> pd.DataFrame:
 # Feature group: user-item history
 # ----------------------------------------------------------------------
 def build_user_item_history(train_df: pd.DataFrame, candidates: pd.DataFrame) -> pd.DataFrame:
-    """Per (user, item) past interaction stats."""
-    df = train_df[train_df["user_id"].isin(candidates["user_id"].unique())][
-        ["user_id", "item_id", "event_type", "event_time"]
-    ].copy()
+    """Per (user, item) past interaction stats. Memory-tight version."""
+    df = train_df[["user_id", "item_id", "event_type", "event_time"]].copy()
     df["ts"] = pd.to_datetime(df["event_time"], format="%Y-%m-%d %H:%M:%S %Z")
     cutoff = df["ts"].max()
-    df["days_ago"] = (cutoff - df["ts"]).dt.total_seconds() / 86400.0
+    df["days_ago"] = ((cutoff - df["ts"]).dt.total_seconds() / 86400.0).astype(np.float32)
+    df = df.drop(columns=["event_time", "ts"])
 
-    # group by (user, item)
-    grp = df.groupby(["user_id", "item_id"])
-    total = grp.size().rename("ui_total_events")
-    view = df[df["event_type"] == "view"].groupby(["user_id", "item_id"]).size().rename("ui_view")
-    cart = df[df["event_type"] == "cart"].groupby(["user_id", "item_id"]).size().rename("ui_cart")
-    purchase = df[df["event_type"] == "purchase"].groupby(["user_id", "item_id"]).size().rename("ui_purchase")
+    grp = df.groupby(["user_id", "item_id"], sort=False)
+    total = grp.size().astype(np.int16).rename("ui_total_events")
     days_last = grp["days_ago"].min().rename("ui_days_since_last")
-    hist = pd.concat([total, view, cart, purchase, days_last], axis=1).reset_index()
+    hist = pd.concat([total, days_last], axis=1)
+
+    for ev in ["view", "cart", "purchase"]:
+        cnt = (df[df["event_type"] == ev]
+               .groupby(["user_id", "item_id"], sort=False).size()
+               .astype(np.int16).rename(f"ui_{ev}"))
+        hist = hist.join(cnt, how="left")
     for col in ["ui_view", "ui_cart", "ui_purchase"]:
-        hist[col] = hist[col].fillna(0)
-    return hist
+        hist[col] = hist[col].fillna(0).astype(np.int16)
+    return hist.reset_index()
 
 
 # ----------------------------------------------------------------------
@@ -284,7 +285,21 @@ def main() -> None:
         logger.info("[D] user_item_history features ...")
         t0 = time.time()
         ui_hist = build_user_item_history(train_df, candidates)
-        candidates = candidates.merge(ui_hist, on=["user_id", "item_id"], how="left")
+        logger.info("  hist built: %s rows, merging in chunks ...", f"{len(ui_hist):,}")
+        # chunked merge to keep peak memory low (cgroup limit ~60-80GB)
+        n_chunks = 8
+        user_ids_sorted = np.sort(candidates["user_id"].unique())
+        chunk_size = (len(user_ids_sorted) + n_chunks - 1) // n_chunks
+        merged_parts = []
+        for i in range(n_chunks):
+            users_chunk = set(user_ids_sorted[i * chunk_size:(i + 1) * chunk_size])
+            cand_chunk = candidates[candidates["user_id"].isin(users_chunk)]
+            hist_chunk = ui_hist[ui_hist["user_id"].isin(users_chunk)]
+            merged_parts.append(cand_chunk.merge(hist_chunk, on=["user_id", "item_id"], how="left"))
+            logger.info("    chunk %d/%d merged (%s rows)", i + 1, n_chunks, f"{len(merged_parts[-1]):,}")
+        del ui_hist
+        candidates = pd.concat(merged_parts, ignore_index=True)
+        del merged_parts
         for col in ["ui_total_events", "ui_view", "ui_cart", "ui_purchase"]:
             candidates[col] = candidates[col].fillna(0).astype(np.int16)
         candidates["ui_days_since_last"] = candidates["ui_days_since_last"].fillna(999).astype(np.float32)
