@@ -16,7 +16,7 @@
 
 ---
 
-## 핵심 발견 — Feb 27 데이터 anomaly
+## 핵심 발견 — Feb 27 비정상 패턴
 
 ### 일별 event count (last 20 days)
 
@@ -33,7 +33,7 @@ Feb 29         20       359    39,383   39,762
 - **view 10x 폭락** — 65k → 6.5k
 - **purchase 100x+ 폭증** — 1-6/일에서 668
 
-**자연스러운 user 행동 패턴**:
+**자연스러운 browse-driven 행동 패턴**:
 ```
 view ↑ → cart ↑ → purchase ↑ (점진적 funnel)
 ```
@@ -43,9 +43,7 @@ view ↑ → cart ↑ → purchase ↑ (점진적 funnel)
 view ↓ 10x  +  cart = 0  +  purchase ↑ 100x
 ```
 
-view 와 cart 가 줄어들면서 purchase 가 폭증하는 건 **물리적으로 거의 불가능**. 모든 구매에는 어떤 형태로든 "보기" 가 선행되어야 함.
-
-→ **데이터 logging 시스템 변경 / 수집 artifact** 강력한 신호.
+이는 **평소의 user behavior mix 로는 설명 불가**.
 
 ---
 
@@ -53,10 +51,28 @@ view 와 cart 가 줄어들면서 purchase 가 폭증하는 건 **물리적으�
 
 | 가설 | 평가 | 근거 |
 |---|---|---|
-| **A. 판촉/단발성 이벤트** | ❌ **기각** | 판촉이면 view + cart 도 증가해야. **반대로 감소** |
-| **B. 데이터셋 cutoff / logging artifact** | ✅ **강력 지지** | Feb 27 cart=0 + view 10x 폭락 + purchase 100x 폭증 |
+| A. 판촉/단발성 이벤트 (browse-driven) | ❌ **기각** | 일반 판촉이면 view + cart 도 증가해야. **반대로 감소** |
+| **A'. 직접 구매 flow 캠페인 (push/reorder/정기배송)** | ⚠️ **가능** | view 없이 purchase 가능. 다만 668건이 다 직접 flow 인 건 매우 많음 |
+| **B. 데이터셋 cutoff / logging artifact** | ⚠️ **가능** | 마지막 3일 다른 sampling/filtering 또는 원본 boundary artifact |
 | C. 신규 user 유입 | ❌ 약함 | 신규 user 비율 7-9% (두드러지지 않음) |
 | D. 시즌성/category mix 변화 | ⚠️ 부분 | electronics 폭증 (xiaomi/sony/iqos) but category mix 유지 |
+
+**A' (직접 구매 flow) 가 가능한 이유**:
+
+| Flow | View 기록? | Cart 기록? |
+|---|---|---|
+| Push notification 의 "지금 사기" 직링크 | skip 가능 | X |
+| 1-Click reorder ("Buy it again") | X | X |
+| Subscribe & Save / 정기배송 자동 결제 | X | X |
+| Affiliate / 외부 deep link | 부분 | X |
+
+→ 이런 flow 가 dominant 한 시기면 view ↓ + cart=0 + purchase ↑ 가능.
+
+**그래도 비정상인 이유** (A' 만으로 설명 어려운 부분):
+
+1. **평소 user mix 변화 너무 큼** — 보통도 일부 user 는 1-click reorder 로 사는데, view 가 비례해서 줄지 않음. Feb 27 만 mix 가 통째로 바뀌는 건 부자연스러움
+2. **Magnitude** — push 캠페인 1-2개로 view 10x + cart 100% 감소는 어려움
+3. **부분 회복 패턴** — Feb 28-29 의 cart 15, 20 / view 33k, 39k 부분 회복은 system level 변화의 점진적 복원에 더 가까움
 
 ---
 
@@ -113,22 +129,23 @@ Apparel 중심은 유지. Category mix 자체는 normal.
 
 ---
 
-## 데이터 anomaly 의 의미
+## Feb 27 비정상 패턴의 가능 원인
 
-### "데이터 logging 시스템 변경 / 수집 artifact" 의 정확한 뜻
-
-**확정은 아닌 강력한 추정**. 가능한 시나리오 (확률 순):
+**확정 불가** (주최사만 앎). 가능한 시나리오 (확률 비슷):
 
 | 시나리오 | 가능성 | 설명 |
 |---|---|---|
-| 1. 대회 주최사의 데이터 전처리 차이 | ⭐⭐⭐⭐ | 마지막 3일이 다른 sampling / filtering 로 만들어짐 |
-| 2. 원본 데이터셋의 logging anomaly | ⭐⭐⭐⭐ | REES46 등 공개 dataset 의 boundary artifact (흔함) |
-| 3. Train/test split 시점 차이 | ⭐⭐⭐ | 평가셋 (Mar 1-7) 위해 마지막 3일 다른 처리 |
-| 4. 서버 장애 + 부분 복구 | ⭐⭐ | view/cart logging 서버 죽고 purchase 만 살아남 |
-| 5. 의도적 difficulty 추가 | ⭐⭐ | cold-start / 짧은 history 시나리오 합성 |
-| 6. 실제 단발성 promotion | ⭐ | cart=0 까지 설명 안 됨 |
+| 1. 대규모 push/email 캠페인 → 직접 구매 flow dominant | ⭐⭐⭐ | View skip 되는 deep-link 구매 |
+| 2. 대회 주최사의 데이터 전처리 차이 | ⭐⭐⭐ | 마지막 3일이 다른 sampling / filtering 로 만들어짐 |
+| 3. 원본 데이터셋의 boundary artifact | ⭐⭐⭐ | 공개 dataset (REES46 등) 의 boundary 흔한 artifact |
+| 4. Train/test split 시점 차이 | ⭐⭐ | 평가셋 (Mar 1-7) 위해 마지막 3일 다른 처리 |
+| 5. 정기배송 일제 갱신 | ⭐⭐ | 월말 갱신이면 가능, dataset spec 에 명시 없음 |
+| 6. 서버 장애 + 부분 복구 | ⭐⭐ | view/cart logging 서버 죽고 purchase 만 살아남 |
+| 7. 의도적 difficulty 추가 | ⭐⭐ | cold-start / 짧은 history 시나리오 합성 |
 
-**확정 답**: 모름 (주최사만 앎). **추정**: 데이터에 manipulation 이 있음 (의도적이든 artifact 든) 거의 확실.
+**공통점**: 어느 시나리오든 **"이 시기의 cart 행동 신호가 약하다"** 라는 결론은 동일.
+
+**확정 답**: 알 수 없음. 다만 **평소 user behavior mix 와는 다른 패턴** 인 것은 확실.
 
 ---
 
@@ -192,9 +209,9 @@ Apparel 중심은 유지. Category mix 자체는 normal.
 > "팀원이 cart_boost flag 끄고 점수 +0.0014 얻음. 단순 hyperparameter sensitivity 인지 진짜 mechanism 인지 EDA 로 검증.
 > 
 > 검증 결과:
-> 1. Feb 27 의 cart=0, view 10x 폭락, purchase 100x 폭증 — **데이터 logging 시스템 변경의 artifact**
-> 2. 자연스러운 판촉/spike 가 아니라 **데이터 수집 방식 변경의 결과**
-> 3. Cart 이벤트가 없으니 cart_boost 휴리스틱 자체가 작동 안 함
+> 1. Feb 27 의 cart=0, view 10x 폭락, purchase 100x 폭증 — **평소 user behavior 와 다른 패턴**
+> 2. 가능 원인: push 캠페인 / 데이터 전처리 / 원본 dataset artifact / 서버 부분 장애 — 확정 불가
+> 3. 어느 경우든 **이 시기 cart 신호가 약함** → cart_boost 휴리스틱 작동 불가
 > 4. +0.0014 는 noise removal 수준, **competition-specific quirk**
 > 
 > Production lesson: **점수 변화의 mechanism 확인 전에 'feature 가 좋다' 라고 결론짓지 말 것**. 데이터 quirk 일 수도 있음. data drift / sanity check 자동화가 production 의 표준."
