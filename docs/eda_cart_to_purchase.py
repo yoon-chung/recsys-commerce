@@ -8,12 +8,14 @@
 
 from __future__ import annotations
 
-import sys
 from pathlib import Path
 
 import pandas as pd
 
-TRAIN_PATH = "/root/data/train.parquet"
+TRAIN_PATH = Path(__file__).resolve().parents[1] / "baseline" / "data" / "train.parquet"
+# fallback to server path if running on server
+if not TRAIN_PATH.exists():
+    TRAIN_PATH = Path("/root/data/train.parquet")
 SPIKE_START = "2020-02-27"  # log.md 의 val_gt 99.7% 가 Feb 27-29
 VAL_GT_END = "2020-02-29 23:59:59"
 
