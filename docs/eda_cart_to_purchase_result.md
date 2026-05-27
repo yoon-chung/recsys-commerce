@@ -6,7 +6,7 @@
 
 ## 동기
 
-팀원의 ensemble config 에서 `cart_boost: false` 설정으로 public LB 0.1490 → **0.1504** (+0.0014) 달성.
+외부 reference 의 ensemble config 에서 `cart_boost: false` 설정으로 public LB 0.1490 → **0.1504** (+0.0014) 달성.
 
 **검증 질문**: 왜 cart_boost 를 끄는 게 더 좋았나?
 

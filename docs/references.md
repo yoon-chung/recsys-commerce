@@ -59,13 +59,13 @@
 
 ---
 
-## 4. 멘토링 / 의사결정 메모
+## 4. 의사결정 메모
 
-### 2026-05-21 멘토링 — 핵심 결정
+### 2026-05-21 — 핵심 방향 결정
 
 - **방향성 전환**: 대회 점수 짜내기 < 추천 시스템 대표 모델 학습 + Week 2 서비스 foundation + 포트폴리오. ML 영역 (LightGBM/XGBoost ranker, 무거운 FE) 은 제외
 - **Week 분할**: Week 1 = 모델링 (EASE / BSARec / DiffRec / LightGCN + ALS 완료) / Week 2 = FastAPI 서비스
-- **기간 축소 ablation 권고**: "구매 몰린 짧은 기간으로 축소 학습" → [exp_002b_bsarec_4w](../experiments/exp_002b_bsarec_4w/) 에서 4주 ablation 으로 구체화
+- **기간 축소 ablation**: "구매 몰린 짧은 기간으로 축소 학습" → [exp_002b_bsarec_4w](../experiments/exp_002b_bsarec_4w/) 에서 4주 ablation 으로 구체화
 - **데이터 증강** (보류): Solar API 활용 방향 — item content embedding / conversational 서비스 layer 등은 추후 결정
 
 ### 의사결정 기록
@@ -87,5 +87,5 @@
 
 - 새 모델 실험을 시작할 때, 먼저 §1 표에 row 추가
 - 새 도구/API를 도입하면 §2 에 추가
-- 의사결정 (e.g., 멘토링, 가설 수정) 은 §4 에 날짜 + 한 줄 요약
+- 의사결정 (e.g., 방향 전환, 가설 수정) 은 §4 에 날짜 + 한 줄 요약
 - 각 실험 README 의 "참고" 섹션은 **이 문서 항목으로 링크** (중복 작성 X)

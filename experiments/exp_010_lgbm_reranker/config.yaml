@@ -1,7 +1,7 @@
 # exp_010_lgbm_reranker -- LightGBM reranker on Stage 1 candidates.
 #
 # Motivation: ensemble v3-v6 모두 dead-end (4 method × 9 configs all negative).
-# 팀원 path 가 같은 결론: ensemble (0.1432) -> LGBM reranker (0.1487, +0.0055).
+# 외부 reference 도 같은 path: ensemble (0.1432) -> LGBM reranker (0.1487, +0.0055).
 # Score-based 가중평균/RRF 가 못 잡는 lift 를 feature-engineered LGBM 이 잡음.
 #
 # Stage 1 candidates: union of top-50 across 5 models

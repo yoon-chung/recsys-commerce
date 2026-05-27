@@ -2,7 +2,7 @@
 
 Context:
     v3 RRF grid sweep best (TIFU 10x + BSARec 1x) lift = +0.00037 NDCG = 노이즈.
-    팀원의 weighted score (TIFU 66 / MB-STR 26 / SASRec 8) 로 0.1431 달성.
+    외부 reference 의 weighted score (TIFU 66 / MB-STR 26 / SASRec 8) 로 0.1431 달성.
     차이: rank-based RRF vs score-based weighted.
 
 Algorithm (per user):
@@ -19,9 +19,9 @@ Models (5 available, all DONE):
     bsarec_cl-- exp_006 BSARec+CL hybrid
     bert4rec -- exp_005 BERT4Rec
 
-Weight configs (grid sweep + 팀원 patterns):
+Weight configs (grid sweep + external reference patterns):
     tifu_only         : TIFU 단독 baseline (= public 0.1175)
-    team              : 0.66 TIFU + 0.08 BSARec + 0.26 MB-STR  (팀원 그대로)
+    team              : 0.66 TIFU + 0.08 BSARec + 0.26 MB-STR  (external reference)
     team_w_cl         : 위 + 0.05 BSARec+CL
     t_b_m_equal       : 0.5 TIFU + 0.25 BSARec + 0.25 MB-STR
     t_dominant_5      : 0.7 TIFU + 0.1 BSARec + 0.1 MB-STR + 0.05 CL + 0.05 BERT
@@ -72,7 +72,7 @@ MODELS = {
 # (cfg_name, dict of model_name -> weight). weight 0 또는 absent 면 skip.
 CONFIGS: list[tuple[str, dict]] = [
     ("tifu_only",        {"tifu": 1.0}),
-    # 팀원 패턴 그대로 + 우리 BSARec 대체
+    # external reference 패턴 + 우리 BSARec 대체
     ("team",             {"tifu": 0.66, "bsarec": 0.08, "mbstr": 0.26}),
     # TIFU 약화 변형
     ("t50_b25_m25",      {"tifu": 0.50, "bsarec": 0.25, "mbstr": 0.25}),

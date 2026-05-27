@@ -2,6 +2,7 @@
 
 exp_010 의 binary classifier 를 LambdaRank 로 swap. NDCG@10 직접 최적화.
 Features 는 exp_010 의 features_all/ 재사용 (build_features.py 안 돌림).
+외부 reference 의 LGBMRanker 사용 패턴 참고.
 
 Key difference vs exp_010:
     - objective: binary -> lambdarank

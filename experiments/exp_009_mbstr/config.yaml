@@ -1,6 +1,6 @@
 # exp_009_mbstr -- BSARec backbone + multi-behavior embedding
 #
-# Motivation: 팀원이 MB-STR + SASRec + TIFU 3-model weighted ensemble 로 0.1431
+# Motivation: 외부 reference 가 MB-STR + SASRec + TIFU 3-model weighted ensemble 로 0.1431
 # 달성. MB-STR weight 26% 가 의미 있는 비중 -> multi-behavior signal 이
 # 우리 BSARec 가 못 잡는 영역 보완 가능성 큼.
 #

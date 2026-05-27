@@ -241,7 +241,7 @@ p90 = 29인데 RecBole 기본 sasrec.yaml은 50. **50을 그대로 두면 90% us
 
 ---
 
-## 11. 모델 선택 권고 (팀원 EDA + 우리 해석)
+## 11. 모델 선택 권고 (EDA 기반)
 
 | 모델 | 추천도 | 근거 |
 |---|---|---|
@@ -256,7 +256,7 @@ p90 = 29인데 RecBole 기본 sasrec.yaml은 50. **50을 그대로 두면 90% us
 
 ---
 
-## 12. 초기 앙상블 가중치 (팀원 권고)
+## 12. 초기 앙상블 가중치 (참고)
 
 EDA 셀 47 출력 기준:
 
@@ -470,60 +470,3 @@ EDA에서 답하지 못한 것 — **2026-05-21 확장 분석에서 대부분 �
 
 ---
 
-## 17. 멘토링 질문 메모 (2026-05-21)
-
-cy 본인 참고용. 멘토링 종료 후 정리/삭제 가능. EDA 분석 결과를 근거로 묶음.
-
-### Q1. 데이터 anomaly — apparel × IT brand 매핑 정상인가?
-
-**EDA 근거** (§15.1): Feb 27-29 spike 1,437건 모두 `apparel.shoes` 등 의류 카테고리. 그런데 brand는 xiaomi (171), sony (122), iqos (96), samsung (81), apple (45) 등 모두 IT/가전 브랜드. base period (Feb 1-26)에서도 동일 패턴.
-
-**물어볼 것**:
-- 데이터 자체의 brand-category 정합성 이슈인가, 아니면 IT 브랜드의 의류 라이센스 라인이 실제로 있는 건가?
-- ID embedding 기반 모델 (SASRec 등) 에는 영향 없을 듯하지만, brand text feature를 활용하는 시도(예: brand 임베딩을 워드 임베딩으로 init)를 한다면 주의해야 하는지?
-
-### Q2. Time Series CV 전략 (팀원 질문)
-
-**EDA 근거**: purchase 2,076건 중 1,437건(69%)이 Feb 27-29 3일에 집중. 우리 self-val/public ratio 2.32 중 약 절반이 이 spike 효과로 추정.
-
-**물어볼 것**:
-- rare-event burst 데이터에서 K-fold CV가 의미가 있나? (각 fold의 분포가 너무 달라짐)
-- 현재 time-based holdout (last 7 days, eval user 928명) → Feb 9-22로 hold-out 옮기면 spike를 train에 두고 평가 안정성 ↑. 멘토 권고?
-- nested CV / purged CV / walk-forward 중 우리 task에 가장 정합한 방식?
-
-### Q3. 역대 기수 이 task 점수 분포
-
-**상황**: 우리 exp_000 ALS = self-val 0.184 / public 0.079. baseline 공시 0.0847.
-
-**물어볼 것**:
-- 역대 기수 이 commerce purchase task 상위권 (1~3위) 점수가 어느 정도인가? (대략 범위라도)
-- calibration ratio (self-val ÷ public) 2.32가 이 task에서 일반적인 수준인가, 아니면 우리 self-val window가 spike에 너무 노출되어 inflated된 건가?
-
-### Q4. mid-project Hydra refactor 의견
-
-**상황**: 2주 남음. 팀원은 Hydra 기반 repo (`github.com/WanYoung-Oh/recsys`), 우리는 자체 config.yaml + load_config 패턴. cy는 Hydra 학습 욕심도 있음.
-
-**물어볼 것**:
-- 멘토 본인 경험상 mid-project Hydra 도입 ROI는 어떤가? 어느 정도 규모 프로젝트부터 가치 있는가?
-- 우리 case (단독 작업, 2주, 적극적 튜닝 필요) → wandb sweeps / Optuna 직접이 충분한가?
-- 대회 후 portfolio refactor 프로젝트로 Hydra 학습이 더 적절한지?
-
-### Q5. 팀 협업 — 모델 분업 vs 같은 모델 재현
-
-**상황**: 팀원이 8개 sequential 모델 구현 중 (sasrec/tisasrec/bsarec/fearec/mbstr/saferec/tifu_knn/cl4srec). 우리는 §15.6 결론대로 Two-stage reranker가 강력 잠재력. EASE 같은 다양성 멤버도 고려.
-
-**물어볼 것**:
-- 같은 모델을 두 명이 다른 hyperparam으로 돌려 ensemble 다양성 확보 vs 모델 family 분담 — 어느 쪽이 RRF lift 큰가?
-- RRF vs 가중평균 vs stacking — 우리 sparse purchase GT 데이터에 가장 정합한 방법?
-- 본인 portfolio도 고려할 때 sequential 깊게 vs 다양성 확보 — 어느 쪽 추천?
-
-### Q6 (자투리, 시간 남으면). EDA에서 새로 발견한 시그널 확인
-
-**EDA 근거** (§15.6 요약):
-- user-level price band: purchase의 86.8%가 user view band 안 → reranker feature로 강력?
-- view top brand ↔ purchase top brand 일치율 46.5% → 우연 33% 대비 강함
-- view → purchase 94.6%가 inter-session → user-level long-term sequence 모델 우선
-
-**물어볼 것**:
-- price band, brand top-1 일치 같은 feature가 commerce 실무에서도 자주 쓰이는 strong signal인가?
-- cross-session vs intra-session 패턴은 멘토 경험상 어떤 모델군이 강한가?

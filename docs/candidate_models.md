@@ -25,7 +25,7 @@
 | **BSARec** (AAAI 2024) | Sequential (Transformer) | 비공식 PyTorch impl (GitHub) | self-attention의 약점(노이즈 민감)을 frequency-domain inductive bias로 보완 | 최신 SOTA. literature상 NDCG +10~14%. RecBole 호환 가능 (래퍼 작성 필요) |
 | **FEARec** | Sequential (Transformer) | RecBole | Frequency-Enhanced Attention (FFT 기반) — long-range pattern 강화 | 119k user sequence에 long-pattern 존재 가능 (4개월 데이터) |
 | **SAFERec** | NBR + Sequential | 비공식 | Frequency-aware re-ranker — 빈도 신호 직접 모델링 | 우리 데이터 item 반복도 14.63% → NBR 시그널 작동 구간 |
-| **MB-STR** (multi-behavior SASRec) | Sequential (Transformer) | 비공식 — 팀원 repo [src/models/mbstr.py](https://github.com/WanYoung-Oh/recsys/blob/main/src/models/mbstr.py) | SASRec + **behavior-type embedding** (view/cart/purchase as 0/1/2). item embedding + position embedding + behavior embedding 합산. cart/purchase position에 loss weighting | 우리 데이터가 정확히 3-behavior 구조 (view 99.78% / cart 0.20% / purchase 0.02%). 단일 SASRec은 event_type 정보를 버리지만 MB-STR은 직접 시그널화 — 적합도 매우 높음 |
+| **MB-STR** (multi-behavior SASRec) | Sequential (Transformer) | 비공식 (논문 기반 구현) | SASRec + **behavior-type embedding** (view/cart/purchase as 0/1/2). item embedding + position embedding + behavior embedding 합산. cart/purchase position에 loss weighting | 우리 데이터가 정확히 3-behavior 구조 (view 99.78% / cart 0.20% / purchase 0.02%). 단일 SASRec은 event_type 정보를 버리지만 MB-STR은 직접 시그널화 — 적합도 매우 높음 |
 
 ---
 
@@ -120,7 +120,7 @@
 ### 목표 (재정의)
 
 - **대회 NDCG 1% 짜내기 < 추천 시스템 대표 모델 경험 + 향후 서비스 개발 foundation + 포트폴리오 가치**
-- 멘토 권고 중 ML 영역 (LightGBM/XGBoost ranker, 무거운 feature engineering, 전환율 학습 등) 은 제외 — 다른 프로젝트에서 학습 가능
+- 산업 ML 영역 (LightGBM/XGBoost ranker, 무거운 feature engineering, 전환율 학습 등) 은 본 단계에서 제외 — 다른 프로젝트에서 학습 가능
 - 모델링 1주 + 서비스 개발 1주 분할
 
 ### Week 1 — 모델링 (5개 모델 × 4 paradigm)
@@ -146,7 +146,7 @@ ALS (exp_000 완료) 까지 합치면 **6개 모델, 5 paradigm** (MF / Item-ite
 | 제외 항목 | 이유 |
 |---|---|
 | LightGBM / XGBoost ranker, 무거운 FE | ML 영역, 우리 목표 (recsys core) 와 결이 다름 |
-| SASRec / TiSASRec / FEARec / SAFERec / MB-STR / TIFU-KNN / CL4SRec | 팀원 8개 모델 list 와 중복 (포트폴리오 차별화 ↓) |
+| SASRec / TiSASRec / FEARec / SAFERec / MB-STR / TIFU-KNN / CL4SRec | 외부 reference 모델 list 와 중복 (포트폴리오 차별화 ↓) |
 | SR-GNN, NARM session 모드 | cross-session 94.6% — session-aware 모델 부적합 (EDA §15.3) |
 | Mamba4Rec | 롱시퀀스 user 4.1%만 — 효율 우위 발현 어려움 (EDA §4) |
 | Brand text embedding (word2vec init 등) | brand-category anomaly 영향 |
@@ -164,7 +164,7 @@ ALS (exp_000 완료) 까지 합치면 **6개 모델, 5 paradigm** (MF / Item-ite
 
 - `filter_already_liked=False` (exp_000 lesson, 14.6% 반복도)
 - max_len=50 (EDA p90=29)
-- time-based holdout (val_days=7 또는 멘토 권고 14)
+- time-based holdout (val_days=7 또는 14)
 - 예측 대상은 638,257 전원 (popularity fallback)
 
 ⚠️ **주의**: 자체 val 절대값을 절대 기준으로 삼지 말 것. exp_000이 self-val 0.18 (baseline 공시 public 0.08의 2.17배) 찍은 건 Feb 27~29 spike 효과. 다음 모델들의 self-val 을 ALS 0.18과 직접 비교 X, 각 모델의 ranking + recall@10 등 보조 메트릭 + (가능하면) public 제출 점수로 종합 판단.
@@ -183,8 +183,8 @@ ALS (exp_000 완료) 까지 합치면 **6개 모델, 5 paradigm** (MF / Item-ite
 | Co-visitation | — | pandas로 직접 (~50줄) | ensemble 다양성용 |
 | **BSARec** (AAAI 2024, §5 채택) | — | 저자 GitHub PyTorch 구현 port (3일) | frequency-domain SOTA |
 | **DiffRec** (SIGIR 2023, §5 채택) | — | 저자 GitHub PyTorch 구현 port (2일) | Diffusion paradigm 추천 시스템 |
-| **MB-STR** | — | 팀원 repo `src/models/mbstr.py` 참조 (SASRec + behavior embedding ~50줄) | (§5에서 제외 — 팀원 중복) |
-| **TIFU-KNN** | — | 비공식 (논문 기준 구현) | (§5에서 제외 — 팀원 중복) |
+| **MB-STR** | — | 비공식 (SASRec + behavior embedding ~50줄) | (§5에서 제외 — 외부 reference 중복) |
+| **TIFU-KNN** | — | 비공식 (논문 기준 구현) | (§5에서 제외 — 외부 reference 중복) |
 | Reranker (LightGBM) | lightgbm | feature engineering 필요 | (§5에서 제외 — ML 영역) |
 
 서버 미리 설치된 것: `recbole, kmeans_pytorch, ray, implicit, pyarrow, fastparquet, tqdm` (per CLAUDE.md).
@@ -255,8 +255,8 @@ Binary relevance (purchase=1 / 그 외=0) 사용 — 경쟁 setup과 일치.
 | 이슈 | 우리 data 특성 | 모델링 함의 |
 |---|---|---|
 | **GT type vs train signal mismatch** | GT=purchase only (2,076건), train events 전체 8.35M | 옵션 A: train on next-any-event, eval on purchase / B: train on next-purchase only (signal 너무 적음, 학습 불가) → **A 채택 + §7.3 hard negative + 아래 loss weighting** |
-| **View dominance (99.78%)** | 일반 SASRec는 모든 event_type 동등 처리 | MB-STR의 cart/purchase loss weighting 이 자연 정합. event_type embedding 추가 (팀원 mbstr.py 참고) |
-| **Feb 27-29 spike (69% of purchases)** | 학습 signal이 3일에 집중 | 학습 포함은 OK (전체 비중 큼). self-val 윈도우에 spike 포함되면 over-optimistic (exp_000 self-val 0.184 ↔ public 0.079 ratio 2.32의 절반 정도가 spike 효과로 추정). 멘토링에서 Feb 9-22 alternative split 논의 |
+| **View dominance (99.78%)** | 일반 SASRec는 모든 event_type 동등 처리 | MB-STR의 cart/purchase loss weighting 이 자연 정합. event_type embedding 추가 |
+| **Feb 27-29 spike (69% of purchases)** | 학습 signal이 3일에 집중 | 학습 포함은 OK (전체 비중 큼). self-val 윈도우에 spike 포함되면 over-optimistic (exp_000 self-val 0.184 ↔ public 0.079 ratio 2.32의 절반 정도가 spike 효과로 추정). Feb 9-22 alternative split 검토 |
 | **filter_already_liked=False** (exp_000 lesson) | item 반복도 14.6% — 본 것 다시 사는 패턴 강함 | Sequential 모델 inference 시 already-seen filter 끄기. 대부분 SASRec impl 기본값이 False지만 yaml 명시 |
 | **Multi-behavior 정보 활용** | view/cart/purchase 3 type 존재 | 일반 SASRec는 정보 손실. MB-STR / event-type embedding / behavior-aware attention 가치 큼 (§1 ★★★ 후보) |
 | **User demographic feature 없음** | 스키마에 연령/성별/지역 등 부재 ([eda_findings §1](eda_findings.md)) | reranker stage 2의 user-side feature는 **behavioral aggregate만** 가능 (top-brand, top-category, 평균 price, session 패턴). demographic-based personalization 불가 — 운영진 tip의 "연령/성별/지역 FE" 항목 직접 적용 불가 |

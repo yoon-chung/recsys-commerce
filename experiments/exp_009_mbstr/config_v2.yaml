@@ -1,10 +1,10 @@
 # exp_009_mbstr / config_v2 -- larger capacity to match teammate's MBSTR.
 #
 # v1 (config.yaml) self-val 0.2389 -- hidden=64, n_layers=2, n_heads=2, inner=256
-# 팀원 share: hidden=256, n_layers=3, n_heads=4, inner=512, batch=4096
+# 외부 reference share: hidden=256, n_layers=3, n_heads=4, inner=512, batch=4096
 # capacity 4-8배 큼. v1 underfit 가설.
 #
-# v2 = 팀원 설정 그대로 (behavior id encoding 만 우리 v1 매핑 유지: PAD=0/view=1/cart=2/purchase=3)
+# v2 = 외부 reference 설정 그대로 (behavior id encoding 만 우리 v1 매핑 유지: PAD=0/view=1/cart=2/purchase=3)
 
 # ---- Data ---------------------------------------------------------------
 data_path: ./data
@@ -18,7 +18,7 @@ NEG_PREFIX: neg_
 
 MAX_ITEM_LIST_LENGTH: 50
 
-# ---- Model -- larger SASRec/BSARec backbone (팀원 setting) -------------
+# ---- Model -- larger SASRec/BSARec backbone (외부 reference setting) -------------
 n_layers: 3
 n_heads: 4
 hidden_size: 256

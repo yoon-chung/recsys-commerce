@@ -14,7 +14,7 @@
 
 | Surface | Use case | 출처 | LLM |
 |---|---|---|---|
-| **A** | 🎯 개인 맞춤 추천 | LGBM reranker (팀원 0.1504) | ⭐ 추천 이유 narration |
+| **A** | 🎯 개인 맞춤 추천 | LGBM reranker (외부 reference 0.1504) | ⭐ 추천 이유 narration |
 | **B** | 🔁 재구매 알림 | TIFU + 마지막 구매 시점 | ⭐ Timing 기반 톤 |
 | **C** | 🛒 함께 자주 구매 | item-item co-purchase | ⭐ 매칭 reasoning |
 | (보너스) D | 🏆 베스트셀러 | event_type==purchase 집계 | — |
@@ -74,7 +74,7 @@
 │  (UI)    │    │                                  │
 └──────────┘    │ ┌──────────────────────────────┐ │
                 │ │ Stage 1+2: LGBM rerank       │ │
-                │ │   (팀원 0.1504 model)         │ │
+                │ │   (외부 reference 0.1504 model)         │ │
                 │ └──────────────────────────────┘ │
                 │            ↓                     │
                 │ ┌──────────────────────────────┐ │
@@ -121,7 +121,7 @@
 1. **재구매 banner 위치** — 맨 위? 별도 section?
 2. **LLM 등장 빈도** — 3개 surface 모두? 핵심 1-2개만?
 3. **UI 도구** — Streamlit (빠름) vs HTML+CSS (production-like)?
-4. **A/B test 시뮬레이션** — 두 reranker (팀원 0.1490 vs cy 0.1353) 동시 노출?
+4. **A/B test 시뮬레이션** — 두 reranker variant (binary 0.1353 vs LambdaRank 0.1358) 동시 노출?
 5. **데모 시나리오** — 1-2명 대표 user 골라서 demo? 또는 user 선택 가능?
 
 ---

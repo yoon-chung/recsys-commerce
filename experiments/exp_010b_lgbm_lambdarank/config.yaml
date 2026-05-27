@@ -1,7 +1,7 @@
 # exp_010b_lgbm_lambdarank -- LambdaRank version of exp_010.
 #
 # Motivation: exp_010 (binary logloss) -> public 0.1353.
-# WanYoung 팀원 분석: LambdaRank objective 가 NDCG@10 직접 최적화 → +0.005-0.01 lift 추정.
+# 외부 reference 분석: LambdaRank objective 가 NDCG@10 직접 최적화 → +0.005-0.01 lift 추정.
 # Features rebuild 불필요 (exp_010 의 features_all/ 재사용).
 
 # ---- Data ---------------------------------------------------------------

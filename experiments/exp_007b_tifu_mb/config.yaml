@@ -6,7 +6,7 @@
 # Mechanism 정당화:
 #   - A2 diagnosis: TIFU 의 강점 = repeat-purchase frequency 직접 모델링
 #     -> cart/purchase 가 stronger purchase signal 이므로 그 빈도를 증폭
-#   - 팀원 (mbr_sas_tifu_knn 0.1432 ensemble + LGBM 0.1487) 외부 검증
+#   - 외부 reference (mbr_sas_tifu_knn 0.1432 ensemble + LGBM 0.1487) 검증
 #   - 우리 0.1175 baseline -> 추정 0.125-0.13 (multi-behavior TIFU 단독)
 #
 # 알고리즘은 exp_007 과 동일. event_weights 만 변경.

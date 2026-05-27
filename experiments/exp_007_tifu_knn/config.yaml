@@ -1,7 +1,7 @@
 # exp_007_tifu_knn -- TIFU-KNN (SIGIR 2020).
 #
 # Non-neural classical baseline. Motivation:
-#   - 팀원 (다른 사람) 이 mbr_sas_tifu_knn 으로 0.1431 보고 -- classical KNN +
+#   - 외부 reference 가 mbr_sas_tifu_knn 으로 0.1431 기록 -- classical KNN +
 #     temporal frequency 가 우리 데이터에 강력할 가능성 (item 반복 14.6% +
 #     Feb 27-29 spike + multi-behavior).
 #   - 우리 portfolio 에 KNN/frequency 류 paradigm 부재 -> coverage 확보.

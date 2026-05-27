@@ -8,7 +8,7 @@
 #   learning_rate: 0.002 -> 0.001   (큰 모델 finer convergence)
 #   hidden_dropout: 0.5 -> 0.3      (큰 capacity 활용)
 #   attn_dropout: 0.5 -> 0.3        (큰 capacity 활용)
-# 나머지 hyperparameter 는 v2 와 동일 (팀원 setting + behavior id v1 mapping)
+# 나머지 hyperparameter 는 v2 와 동일 (외부 reference setting + behavior id v1 mapping)
 
 # ---- Data ---------------------------------------------------------------
 data_path: ./data

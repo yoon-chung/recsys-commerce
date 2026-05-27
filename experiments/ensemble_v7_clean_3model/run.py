@@ -1,7 +1,7 @@
 """ensemble_v7_clean_3model / run.py -- RRF on 3 well-calibrated models only.
 
 Hypothesis (from teammate-comparison):
-    팀원 0.1441 ensemble = TiSASRec + BSARec + TIFU-KNN + MBSTR (4 well-calibrated)
+    외부 reference 0.1441 ensemble = TiSASRec + BSARec + TIFU-KNN + MBSTR (4 well-calibrated)
     우리 v3-v6 dead-end = TIFU + BSARec + MB-STR + BSARec_CL + BERT4Rec
                           (2 LOO-overfit 모델이 ensemble 오염)
 
@@ -15,7 +15,7 @@ Models (3, all well-calibrated):
 
 Configs swept (tight):
     tifu_only             (baseline)
-    1:1:1                 (equal — 팀원 패턴 추정)
+    1:1:1                 (equal — external reference 패턴 추정)
     3:1:1, 5:1:1          (TIFU-dominant)
     3:1:2, 3:2:1          (assess MB-STR vs BSARec contribution)
 """

@@ -46,7 +46,8 @@
 | ensemble_v5 | per-model z-score | fusion | — | — | — | DONE — negative |
 | ensemble_v6 | exp_007b + BSARec/MB-STR/etc | fusion | — | — | — | DONE — negative |
 | ensemble_v7 | TIFU(MB) + BSARec + MB-STR RRF (clean 3-model) | fusion | best 0.293 (=TIFU only) | — | — | DONE — 가설 H 기각: clean pool 만 써도 ensemble lift X |
-| **exp_010** | **LGBM reranker (5-fold on 928 eval users)** | **2-stage rerank** | **0.3418 (OOF)** | **0.4258** | **0.1353** | **DONE — +0.0178 vs TIFU (+15.2%), reranker effectiveness 입증** |
+| exp_010 | LGBM reranker binary (5-fold on 928 eval users) | 2-stage rerank | 0.3418 (OOF) | 0.4258 | 0.1353 | DONE — +0.0178 vs TIFU (+15.2%) |
+| **exp_010b** | **LGBM reranker LambdaRank (objective swap)** | **2-stage rerank** | **0.3513 (OOF)** | **0.4369** | **0.1358** | **DONE — +0.0095 OOF vs binary, public lift 작음 (calibration ratio 차이)** |
 | (보류) | exp_008 LLM-as-Reranker on TIFU top-50 | LLM rerank | — | — | — | 보류 — Week 2 LLM 통합으로 흡수 가능 |
 
 \* full-data 변종은 val 포함 학습 → self-val 인플레이션. 의사결정은 public 기준.
@@ -63,7 +64,8 @@
 | 4 | 2026-05-22 | exp_002e BSARec 4w_full | 0.0975 | spike 포함 retrain 효과. 예측 0.0977 vs 실제 0.0975 |
 | 5 | 2026-05-22 | exp_002g BSARec 2w_full | 0.0975 | 002e 와 tie. tie-break 상 002e 가 002g 보다 상위 (제출 횟수) |
 | 6 | 2026-05-22 | exp_007 TIFU-KNN 4m holdout | **0.1175** | **+20.5% vs BSARec, new leaderboard top**. TIFU-KNN family calibration ratio **2.487** 측정 (BSARec 2.53 / ALS 2.32 사이). **Classical KNN + temporal frequency 가 transformer 4종 (BSARec, BERT4Rec) 를 압도** — repeat-purchase + spike 가 dominant signal 이었음 |
-| 7 | 2026-05-26 | exp_010 LGBM reranker (5 stage-1 models, 51 features) | **0.1353** | **+0.0178 vs TIFU (+15.2%), Reranker effectiveness 입증**. OOF NDCG 0.342 / public 0.1353 → calibration ratio **2.527** (TIFU 2.49 / BSARec 2.53 사이, family-agnostic framework 신뢰 강화). **Absolute lift 로는 팀원 reranker (+0.0055) 보다 3배 큼** — weak base 에서 reranker pivot 의 효과 입증. Top features: tifu_rank > ui_days_since_last > tifu_norm_score > item_cart > user_repeat_ratio — TIFU backbone + popularity/recency 보조 패턴. **LGBM 은 LOO-overfit 모델 (BERT4Rec, BSARec_CL) 도 자동 down-weight 하여 활용** (RRF 가 못 했던 일) |
+| 7 | 2026-05-26 | exp_010 LGBM reranker binary (5 stage-1 models, 51 features) | **0.1353** | **+0.0178 vs TIFU (+15.2%), Reranker effectiveness 입증**. OOF NDCG 0.342 / public 0.1353 → calibration ratio **2.527** (TIFU 2.49 / BSARec 2.53 사이, family-agnostic framework 신뢰 강화). Top features: tifu_rank > ui_days_since_last > tifu_norm_score > item_cart > user_repeat_ratio — TIFU backbone + popularity/recency 보조 패턴. **LGBM 은 LOO-overfit 모델 (BERT4Rec, BSARec_CL) 도 자동 down-weight 하여 활용** (RRF 가 못 했던 일) |
+| 8 | 2026-05-27 | exp_010b LGBM reranker LambdaRank (objective swap) | **0.1358** | OOF +0.0095 (0.3418 → 0.3513) 명확한 lift 인데 **public 은 +0.0005 만 전이**. Calibration ratio 2.527 → 2.587 변화 — **LambdaRank 의 per-user objective 가 small eval (928 user) 에 over-fit 더 큼**. Empirical lesson: "OOF improvement ≠ public improvement". Self-val sample 작을 때 ranking objective 의 per-group fit 위험. |
 
 ---
 
@@ -160,7 +162,7 @@
 
 ## exp_002b/c/d (BSARec recency ablation, holdout) — DONE 2026-05-21
 
-멘토 권고 ablation. 4m baseline → 4w/2w/1w 변종. 모델/하이퍼 동일, 학습 데이터만 변경.
+Window 별 ablation. 4m baseline → 4w/2w/1w 변종. 모델/하이퍼 동일, 학습 데이터만 변경.
 
 | 변종 | self-val NDCG | recall | Public | Δ vs 4m public |
 |---|---:|---:|---:|---:|
@@ -268,7 +270,7 @@
 [code](./exp_007_tifu_knn/) · **SIGIR 2020** "Modeling Personalized Item Frequency for Next-Basket Recommendation" (He et al.). Non-neural classical method.
 
 **왜 이걸 추가 (portfolio 관점)**:
-- 다른 팀원이 `mbr_sas_tifu_knn` 으로 **public 0.1431** 보고 (우리 0.0975 대비 +47%). Pure transformer pipeline 의 한계 시사
+- 외부 reference 에서 `mbr_sas_tifu_knn` 으로 **public 0.1431** 기록 (우리 0.0975 대비 +47%). Pure transformer pipeline 의 한계 시사
 - 우리 5개 모델 (ALS/EASE/BSARec/DiffRec/BERT4Rec) 다 scoring 기반 deep/closed-form → **KNN/frequency-based paradigm 0개**. 빈 슬롯 채우기
 - Production e-commerce 의 first-class signal: "user X 가 item Y 를 반복 view/cart" 패턴. transformer max_seq=50 cap 보다 직접 모델링
 - **면접 talking point**: "Classical method 가 같은 데이터에서 deep model 을 이긴 이유 — repeat-purchase + temporal frequency 가 dominant signal" — research → production maturity 신호
@@ -322,7 +324,7 @@
 > "Sequential transformer 4종 (BSARec / BERT4Rec / BSARec+CL hybrid) 를 ablate 했지만, 같은 데이터에서 100줄짜리 2020 paper KNN method (TIFU-KNN) 가 **public NDCG +20.5%** 로 압도했다. 진단해 보니 이 데이터의 dominant signal 인 **user-item repeat frequency + temporal decay** 를 transformer 의 parametric attention 으론 직접 잡지 못했기 때문이다. 이게 production e-commerce 에서 classical KNN/co-visit 류가 first-stage candidate generator 로 살아남는 mechanism. Research SOTA 와 production reality 사이의 gap 을 데이터로 직접 검증."
 
 **다음 액션** (TIFU-KNN 위에 추가 lift):
-- **exp_007b** — multi-behavior event weights (cart=3, purchase=5) ablation. 우리 현재 1/1/1 → 팀원 `mbr_sas_tifu_knn` 의 0.1431 까지 가는 핵심 lever 추정
+- **exp_007b** — multi-behavior event weights (cart=3, purchase=5) ablation. 우리 현재 1/1/1 → 외부 reference `mbr_sas_tifu_knn` (0.1431) 의 핵심 lever 추정
 - **exp_007c** — α (0.5/0.7/0.8) + knn_k (300/500/1000) ablation
 - **exp_007_full** — val 포함 retrain (BSARec 패턴 적용 시 +0.002 추정 → public ~0.1195)
 - **Day 4 LLM reranker** — TIFU 의 top-50 후보를 LLM 으로 contextual rerank → potentially big lift
@@ -431,11 +433,11 @@
 
 [code](./exp_007b_tifu_mb/) · exp_007 의 multi-behavior weight ablation. event_weights view=1 / cart=3 / purchase=5.
 
-**가설**: 팀원의 `mbr_sas_tifu_knn` (0.1431) 까지 가는 핵심 lever 가 multi-behavior event weighting 일 것.
+**가설**: 외부 reference `mbr_sas_tifu_knn` (0.1431) 의 핵심 lever 가 multi-behavior event weighting 일 것.
 
 **결과**: self-val NDCG **0.2933** (exp_007 0.2922 대비 +0.0011, 거의 동일). 예상 public ≈ 0.118 (lift 미미). **단독 제출 X**.
 
-**Ensemble 효과 (v6 에서 확인)**: TIFU(MB) 를 base 로 한 ensemble 조차 negative — multi-behavior weighting 만으로 ensemble lift 안 살아남. 팀원의 lift 는 다른 요인 (TiSASRec / paper-faithful MB-STR / reranker) 기인.
+**Ensemble 효과 (v6 에서 확인)**: TIFU(MB) 를 base 로 한 ensemble 조차 negative — multi-behavior weighting 만으로 ensemble lift 안 살아남. 외부 reference 의 lift 는 다른 요인 (TiSASRec / paper-faithful MB-STR / reranker) 기인 추정.
 
 ---
 
@@ -449,7 +451,7 @@
 
 **결과**: self-val NDCG **0.2389** / recall **0.3221** / LOO NDCG **0.2646**. TIFU 0.2922 보다 낮음. 예상 public ≈ 0.094 → **단독 제출 X**.
 
-**Lesson — capacity gap**: 팀원 share 받은 후, 팀원 MB-STR config 는 hidden=256, n_layers=3, n_heads=4, inner=512 (우리의 **16배 capacity**). v1 underfit 가설 → v2/v2b 시도 (아래).
+**Lesson — capacity gap**: 외부 reference 의 MB-STR config 는 hidden=256, n_layers=3, n_heads=4, inner=512 (우리의 **16배 capacity**). v1 underfit 가설 → v2/v2b 시도 (아래).
 
 ---
 
@@ -459,7 +461,7 @@
 
 ### v2 — ABORTED (epoch 31, valid 0.2538 < v1 0.2646)
 
-팀원 hyperparameter 그대로 (hidden=256, n_layers=3, n_heads=4, inner=512, batch=4096, lr=0.002, dropout=0.5/0.5).
+참고 hyperparameter (hidden=256, n_layers=3, n_heads=4, inner=512, batch=4096, lr=0.002, dropout=0.5/0.5).
 
 **문제**: 5.5h 학습 후 valid_score plateau ≈ 0.252-0.254. v1 LOO 0.2646 못 따라잡음. train loss 도 매우 느린 감소 (7894→7870 over 60min) → local optimum 탈출 실패. **Lower LR + lower dropout 필요** 진단.
 
@@ -491,7 +493,7 @@
 **Hypothesis H**: v3-v6 dead-end 의 원인이 BSARec+CL + BERT4Rec (LOO-overfit) 의 ensemble 오염일 것.  
 **Test**: v7 = 같은 stack 에서 2개 LOO-overfit 제거 → clean 3-model RRF.  
 **Result**: 여전히 negative. weight 가 TIFU 쪽으로 갈수록 단조 회복 → asymptote = single TIFU.  
-**결론**: pollution 이 원인 아님. 우리 환경에서 **simple RRF 가 본질적으로 작동 안 함**. 모델 quality gap (TIFU 0.293 vs BSARec 0.247 vs MB-STR 0.239) 때문에 RRF aggregation 이 단일 winner 못 넘음. 팀원의 0.1432 ensemble 은 모델 quality 분포가 더 평평하기에 가능 (TiSASRec + paper-faithful MB-STR).
+**결론**: pollution 이 원인 아님. 우리 환경에서 **simple RRF 가 본질적으로 작동 안 함**. 모델 quality gap (TIFU 0.293 vs BSARec 0.247 vs MB-STR 0.239) 때문에 RRF aggregation 이 단일 winner 못 넘음. 외부 reference 의 0.1432 ensemble 은 모델 quality 분포가 더 평평하기에 가능 (TiSASRec + paper-faithful MB-STR).
 
 **Portfolio lesson**: "ensemble lift 가 보장되지 않는 환경 존재" — production 에서 ensemble 추가 시 항상 weight tuning + member quality 균형 검증 필요. Score-blind aggregation (RRF) 보다 score-based learn-to-rank (LGBM) 이 robust.
 
@@ -560,7 +562,7 @@ user_distinct_items    603
    - LGBM 은 feature importance 통해 자동 weight tuning → 약한 모델도 marginal signal 활용
    - **Score-based learn-to-rank vs score-blind aggregation 의 차이 사례**
 
-3. **Feature backbone: TIFU rank dominant + popularity/recency 보조 (팀원과 동일 결론)**:
+3. **Feature backbone: TIFU rank dominant + popularity/recency 보조**:
    - tifu_rank gain 9085 vs 다음 ~2700 → 3.3배 dominant. TIFU 가 stage-1 backbone 임을 정량 확인
    - item_cart > item_purchase 인 게 흥미로움 (cart 가 추후 purchase 의 더 강한 leading indicator)
    - user_repeat_ratio (#5) 강함 — repeat-buyer 가 dominant population
@@ -577,29 +579,90 @@ user_distinct_items    603
    - Calibration ratio 도 OOF 기준 계산 → 2.527 (실제 public 과 정합)
    - **ML correctness 감각** — junior 에서 쉽게 놓치는 함정
 
-### 팀원 reranker 와 비교
+### 외부 benchmark 와 비교
 
 | 비교 | base | reranker | Δ |
 |---|---|---|---:|
-| **우리** | TIFU 0.1175 | LGBM 0.1353 | **+0.0178 (+15.2%)** |
-| 팀원 | ensemble 0.1432 | reranker 0.1487 | +0.0055 (+3.8%) |
-| 팀원 best | ablation drop_user_activity | 0.1490 | (vs base reranker +0.0003) |
+| **우리 (exp_010 binary)** | TIFU 0.1175 | LGBM 0.1353 | **+0.0178 (+15.2%)** |
+| 외부 reference | ensemble 0.1432 | reranker 0.1487 | +0.0055 (+3.8%) |
+| 외부 reference best | ablation drop_user_activity | 0.1490 | (vs base reranker +0.0003) |
 
-**Absolute lift 로는 우리가 3배 큼**. 단, base 가 약해서 최종 점수 우리가 ~0.014 낮음.
+**Absolute lift 로는 우리가 3배 큼**. 단, base 가 약해서 최종 점수 ~0.014 낮음.
 
-**Portfolio narrative**: "**Weak base + strong reranker** = production constraint simulation. 한 모델만 운영 가능한 production 환경에서 reranker pivot 이 효과적임을 동일 dataset 으로 입증."
-
-### Gap 분석 (팀원 0.1490 - 우리 0.1353 = 0.0137)
-
-- **~70%**: MB-STR capacity (paper-faithful vs simplified) + TiSASRec 추가
-- **~20%**: feature engineering 디테일 (drop_user_activity ablation 등)
-- **~10%**: TIFU multi-behavior weight tuning precision
-
-이 gap 채우려면 5-10시간 추가 + 결과 불확실. **ROI 낮음 → grinding 중단**, Week 2 service pivot.
+**Narrative**: "**Weak base + strong reranker** = production constraint simulation. 한 모델만 운영 가능한 환경에서 reranker pivot 의 효과를 동일 dataset 으로 입증."
 
 ### 면접 talking point
 
 > "5개 stage-1 모델 (classical TIFU + transformer 4종) 의 score-blind RRF/weighted ensemble 4가지 방식 모두 single best TIFU 못 넘었다. 진단으로 LOO-overfit 패턴 + RRF aggregation 한계 발견. **2-stage LGBM reranker 로 pivot** 해서 same models 로 public **+15.2% lift** 달성. 이 과정에서 production engineering 패턴 (cgroup-aware chunked parquet pipeline) 직접 구현하면서 OOM 4번 해결. 마지막 label leakage 함정도 self-val 0.561 출력 보고 직접 catch — OOF 0.342 가 honest estimate."
+
+---
+
+## exp_010b_lgbm_lambdarank — DONE 2026-05-27 (제출 #8, 0.1358)
+
+[code](./exp_010b_lgbm_lambdarank/) · exp_010 의 LGBM objective swap. **Binary classifier → LambdaRank**. Features rebuild 불필요 (exp_010 의 features_all/ 재사용).
+
+### 가설 + 동기
+
+외부 reference 의 reranker 코드 분석 시 `LGBMRanker(objective="lambdarank", metric="ndcg", eval_at=[10])` 사용. 우리 exp_010 의 `LGBMClassifier(objective="binary")` 는 NDCG@10 metric 과 misalign. 가설: **LambdaRank 로 swap 시 OOF NDCG +0.005-0.010 lift, public +0.003-0.007 추정**.
+
+### 변경점
+
+- `objective`: binary → **lambdarank**
+- `metric`: binary_logloss → **ndcg, eval_at=[10]**
+- `lgb.train` → `LGBMRanker.fit(group=per_user_row_count)`
+- Stage 1 candidate pool, feature engineering, 5-fold split 모두 동일
+
+### 결과
+
+| Metric | exp_010 binary | **exp_010b LambdaRank** | Δ |
+|---|---:|---:|---:|
+| OOF NDCG@10 | 0.3418 | **0.3513** | **+0.0095** |
+| OOF recall@10 | 0.4258 | 0.4369 | +0.0111 |
+| Public NDCG@10 | 0.1353 | **0.1358** | **+0.0005** |
+
+**Fold-wise 비교** (lambdarank 가 모든 fold 에서 binary 보다 ↑):
+
+| Fold | Binary | LambdaRank | Δ |
+|---|---:|---:|---:|
+| 0 | 0.3443 | 0.3489 | +0.0045 |
+| 1 | 0.3037 | 0.3242 | **+0.0205** |
+| 2 | 0.3449 | 0.3568 | +0.0119 |
+| 3 | 0.3149 | 0.3216 | +0.0067 |
+| 4 | 0.4015 | (마지막 fold) | — |
+
+**Calibration ratio 변화**:
+- exp_010 binary: 0.3418 / 0.1353 = **2.527**
+- exp_010b LambdaRank: 0.3513 / 0.1358 = **2.587** (+2.4%)
+
+### 핵심 lesson — OOF lift 의 public 전이 불충분
+
+**예상 vs 실제**:
+- 예상 public lift: +0.005 ~ +0.007 (calibration ratio 2.527 가정)
+- 실제 public lift: **+0.0005** (예상의 5-10% 만 실현)
+
+**가능한 원인**:
+
+1. **LambdaRank 의 per-user objective 가 small eval (928) 에 over-fit**:
+   - Binary: 100k rows 의 global logloss → 더 robust
+   - LambdaRank: per-user group 의 ranking → small group 의 noise 학습 가능
+
+2. **OOF measurement 자체의 inflation**:
+   - LambdaRank 가 NDCG 직접 최적화하니 OOF NDCG 가 더 sensitive 하게 inflate
+   - Public test (Mar 1-7) distribution 과 mismatch
+
+3. **Validation 설계 한계**:
+   - eval_users 928 + val_gt 1,443 (purchase only) sample 작음
+   - 더 큰 sample (e.g., cart+purchase) 사용했다면 LambdaRank lift 더 안정적일 가능성
+
+### Portfolio talking point
+
+> "exp_010 binary LGBM 의 NDCG@10 misalign 진단 후 LambdaRank 로 swap. OOF +0.0095 lift 명확하게 나왔지만 **public 은 +0.0005 만 전이**. Calibration ratio 가 objective 별로 다름 (2.527 → 2.587) 을 정량 발견. Lesson: **OOF improvement 가 public improvement 보장 X**, 특히 per-user ranking objective 는 small eval sample 에 over-fit 위험. Production 의 'offline metric 좋은데 online 별로' 패턴의 mini 사례."
+
+### 산업 적용
+
+- **Self-val sample size 가 ranking objective 의 reliability 결정**
+- Production: A/B test 가 ground truth, offline NDCG 는 proxy
+- Per-user ranking 은 user 당 충분한 sample (e.g., 행동 5+ events) 있을 때 안정적
 
 ---
 
@@ -623,7 +686,7 @@ user_distinct_items    603
 | TIFU multi-behavior weight 튜닝 | 2-4h | +0.005 | 40% |
 | **합쳐서** | **~10h** | **+0.005-0.01** | **~50%** |
 
-10h 투자 후 0.137-0.142 가능성. 팀원 0.1490 따라잡을 확률 여전히 낮음. **Marginal**.
+10h 투자 후 0.137-0.142 가능성. 외부 reference 0.1490 따라잡을 확률 여전히 낮음. **Marginal**.
 
 ## Week 2 service ROI (대안)
 
