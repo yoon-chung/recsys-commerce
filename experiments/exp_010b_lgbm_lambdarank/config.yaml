@@ -1,0 +1,54 @@
+# exp_010b_lgbm_lambdarank -- LambdaRank version of exp_010.
+#
+# Motivation: exp_010 (binary logloss) -> public 0.1353.
+# WanYoung 팀원 분석: LambdaRank objective 가 NDCG@10 직접 최적화 → +0.005-0.01 lift 추정.
+# Features rebuild 불필요 (exp_010 의 features_all/ 재사용).
+
+# ---- Data ---------------------------------------------------------------
+train_data: /root/data/train.parquet
+sample_submission: /root/data/sample_submission.csv
+val_days: 7
+gt_event_types: [purchase]
+ease_saved: ../exp_001_ease/saved
+
+# ---- Stage 1 model predictions (exp_010 과 동일) -----------------------
+model_predictions:
+  tifu:      ../exp_007b_tifu_mb/predictions.parquet
+  bsarec:    ../exp_002e_bsarec_4w_full/predictions.parquet
+  mbstr:     ../exp_009_mbstr/predictions.parquet
+  bsarec_cl: ../exp_006_bsarec_cl/predictions.parquet
+  bert4rec:  ../exp_005_bert4rec/predictions.parquet
+
+# ---- Features 경로 ------------------------------------------------------
+# exp_010 의 features_all/ 그대로 재사용 (build_features.py 안 돌림)
+features_dir: ../exp_010_lgbm_reranker/cache/features_all
+
+# ---- Candidate pool ----------------------------------------------------
+top_k_per_model: 50
+items_per_user_output: 10
+
+# ---- LightGBM hyperparameters (LambdaRank) ---------------------------
+lgbm:
+  objective: lambdarank
+  metric: ndcg
+  ndcg_eval_at: [10]
+  learning_rate: 0.05
+  num_leaves: 63
+  max_depth: 7
+  min_data_in_leaf: 50
+  feature_fraction: 0.8
+  bagging_fraction: 0.8
+  bagging_freq: 5
+  lambda_l1: 0.1
+  lambda_l2: 0.1
+  num_boost_round: 1000
+  early_stopping_rounds: 50
+
+# ---- Training ----------------------------------------------------------
+n_folds: 5
+random_seed: 42
+
+# ---- wandb ------------------------------------------------------------
+wandb_entity: yooni0125-
+wandb_project: cy-commerce-recsys
+run_name: exp_010b_lgbm_lambdarank
