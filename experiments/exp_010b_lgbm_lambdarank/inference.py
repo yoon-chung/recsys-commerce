@@ -75,6 +75,8 @@ def main() -> None:
     # ---- 2. Load fold models -------------------------------------------
     fold_models_paths = sorted(saved_dir.glob("lgbm_fold*.txt"))
     logger.info("found %d fold models", len(fold_models_paths))
+    if len(fold_models_paths) == 0:
+        raise FileNotFoundError(f"no fold models found at {saved_dir} (train_cv.py 먼저 성공해야 함)")
     boosters = [lgb.Booster(model_file=str(fp)) for fp in fold_models_paths]
 
     # ---- 3. Per-chunk predict + top-50 per user (memory-tight) --------

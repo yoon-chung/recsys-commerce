@@ -70,7 +70,8 @@ def main() -> None:
     logger.info("all features: %s rows", f"{len(df_all):,}")
 
     # ---- 2. Filter to eval_users ---------------------------------------
-    df_eval = df_all[df_all["is_eval_user"] == 1].copy()
+    # reset_index 중요: vl.index 가 df_eval position 으로 작동해야 oof_pred 매핑 가능
+    df_eval = df_all[df_all["is_eval_user"] == 1].copy().reset_index(drop=True)
     logger.info("eval users subset: %s rows, %s users, %s positives",
                 f"{len(df_eval):,}",
                 f"{df_eval['user_id'].nunique():,}",

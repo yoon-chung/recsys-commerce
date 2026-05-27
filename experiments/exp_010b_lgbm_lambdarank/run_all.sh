@@ -9,7 +9,7 @@
 # Monitor:
 #   tail -f /root/exp_010b_run.log
 
-set -e
+set -euo pipefail   # tee 도 exit code 보존
 HERE="$(cd "$(dirname "$0")" && pwd)"
 cd "$HERE"
 
