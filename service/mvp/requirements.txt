@@ -1,0 +1,26 @@
+# side_project / Commerce AI Advisor
+# 본체 requirements.txt와 별개로 LLM 레이어용 의존성만 명시
+# 본체와 함께 쓸 때는 `pip install -r ../requirements.txt -r requirements.txt`
+
+# LLM client (OpenAI 호환 — Upstage solar-pro에도 사용)
+openai>=1.30.0
+
+# 데모 UI
+streamlit>=1.31.0
+
+# 데이터 처리 (본체와 동일 버전 권장)
+pandas>=2.0.0
+pyarrow>=14.0.0
+numpy>=1.24.0
+
+# 스키마 검증 (Hard-gate)
+pydantic>=2.5.0
+
+# Calibration (temperature scaling을 위한 최적화)
+scipy>=1.11.0
+
+# 환경 변수
+python-dotenv>=1.0.0
+
+# 테스트(선택)
+pytest>=7.4.0
