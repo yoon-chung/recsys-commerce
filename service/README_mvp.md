@@ -64,29 +64,32 @@ Python(5섹션 후보 선정)  →  Solar Pro(JSON 사유)  →  hard_gate(5단�
 
 ## 4. 아키텍처
 
+**두 경로가 분리되어 있음**: ① 5섹션 카드는 UI가 orchestrator를 직접 호출해 즉시 렌더, ② 채팅 응답은 LangGraph로 흐르며 hard_gate를 통과해야 노출.
+
 ```mermaid
-flowchart LR
-  subgraph offline [오프라인 1회]
-    A[train.parquet + submission CSV] --> B[id_alias + profiles.db]
-    B --> C[Evidence Pack JSONL\n38+ signals]
-    B --> D[item_catalog + recency_pool + recs]
-    B --> E[user_neighbors.npy\nFAISS - 선택]
-    B --> F[item_images.json\nPexels - 선택]
+flowchart TB
+  subgraph offline ["오프라인 빌드 (1회)"]
+    SRC[train.parquet + submission CSV]
+    SRC --> EP[evidence_pack.jsonl<br/>유저별 38+ signals]
+    SRC --> RM[추천 재료<br/>catalog · recency · recs · profiles.db<br/>+ FAISS 이웃 · Pexels 이미지 - 선택]
   end
 
-  subgraph runtime [Streamlit + LangGraph]
-    R[intent_router] -->|general| G[general_chat\n⚠️ 미검증 배지]
-    R -->|shopping/user_id| L[alias_resolver → profile_loader\n→ pack_loader → 5섹션]
-    L --> S[solar_explainer\nSolar Pro JSON]
-    S --> H[hard_gate\n5단계 검증]
-    H --> U[UI: 5섹션 카드 + trust_badge]
+  subgraph runtime ["런타임 — Streamlit + LangGraph (7 노드)"]
+    SEL[사이드바: 유저 선택] --> CARDS[5섹션 카드<br/>orchestrator 직접 호출]
+    CHAT[채팅 입력] --> RT{intent_router}
+    RT -->|general| GEN[general_chat<br/>⚠️ unverified 배지]
+    RT -->|shopping / user_id| LLM[solar_explainer<br/>Evidence Pack → JSON 사유]
+    LLM --> GATE[hard_gate<br/>5단계 검증]
+    GATE --> OUT[trust 배지 + 응답]
   end
 
-  C --> L
-  D --> L
-  E --> L
-  F --> U
+  RM --> CARDS
+  EP --> LLM
+  EP --> GATE
 ```
+
+- **`evidence_pack`은 두 곳에서 쓰임**: LLM 입력(허용 signal 목록) + hard_gate 비교 기준(같은 pack)
+- LangGraph 7 노드: `intent_router → alias_resolver → profile_loader → pack_loader → solar_explainer → hard_gate` (+ 분기 `general_chat`). 다이어그램은 핵심만 표시
 
 ---
 
