@@ -1,6 +1,6 @@
-# LLM 커머스 추천 어드바이저 — MVP
+# LLM 커머스 추천 어드바이저 - MVP
 
-> **"LLM은 추천을 고르지 않고, Python이 고른 추천을 자동 검증된 사유로 설명한다."**
+> **"LLM은 추천을 고르지 않고, 모델이 고른 추천을 자동 검증된 사유로 설명한다."**
 
 | | |
 | --- | --- |
@@ -11,7 +11,7 @@
 
 ---
 
-## 1. 핵심 — 무엇을 푸는가
+## 1. 핵심 - 무엇을 푸는가
 
 추천 LLM 챗봇은 보통 "근거 없는 자유 발화"가 가능해서 신뢰가 어렵다.
 이 MVP는 shopping 모드에서 LLM의 **모든 주장을 코드 레벨에서 자동 검증**한다.
@@ -21,7 +21,7 @@ Python(5섹션 후보 선정)  →  Solar Pro(JSON 사유)  →  hard_gate(5단�
 ```
 
 - 후보 선정에 LLM 미사용 → hallucination 원천 차단
-- LLM 응답은 **Evidence Pack**(유저별 사실 카드 — 카테고리 affinity·가격대 적합·최근 활동 등 38+ 항목)의 값만 인용 허용
+- LLM 응답은 **Evidence Pack**(유저별 사실 카드 - 카테고리 affinity·가격대 적합·최근 활동 등 38+ 항목)의 값만 인용 허용
 - shopping 모드 = 자동 검증 ✓  ·  general 모드 = ⚠️ 미검증 배지
 
 ---
@@ -40,7 +40,7 @@ Python(5섹션 후보 선정)  →  Solar Pro(JSON 사유)  →  hard_gate(5단�
 
 ---
 
-## 3. Hard-gate — 차별점
+## 3. Hard-gate - 차별점
 
 `trust_gate/hard_gate.py`가 LLM 응답을 5단계로 검사:
 
@@ -49,10 +49,10 @@ Python(5섹션 후보 선정)  →  Solar Pro(JSON 사유)  →  hard_gate(5단�
 | 1 | `user_id` 일치 | 응답에 다른 사용자 정보가 섞이지 않았는가 |
 | 2 | `item_id` 후보 범위 안 | LLM이 추천 후보 밖 상품을 끌어오지 않았는가 (밖 = hallucination) |
 | 3 | `claim.evidence_ref ∈ whitelist` ⭐ | LLM이 인용한 **근거 항목 이름**이 Evidence Pack에 사전 정의된 38개 안에 있는가. `evidence_keys()`가 화이트리스트(허용 목록)를 자동 export |
-| 4 | 인용 값이 truthy | 근거로 든 값이 실제로 참/유효인가 — `False`/`0`/빈 컬렉션을 근거 삼는 거짓 인용 차단 |
+| 4 | 인용 값이 truthy | 근거로 든 값이 실제로 참/유효인가 - `False`/`0`/빈 컬렉션을 근거 삼는 거짓 인용 차단 |
 | 5 | bool 의미 모순 | True인 사실을 부정형으로 둔갑시키지 않았는가 (예: "재고 있음"을 "없음"으로 서술) |
 
-> **`evidence_ref`** — LLM이 반환하는 JSON에서 각 주장(claim)에 붙는 "근거 항목 이름". 예: `signals.category_l2_affinity` (이 사용자가 평소 보는 카테고리와 맞다는 신호). 이 이름이 사전 정의된 화이트리스트 밖이면 거부.
+> **`evidence_ref`** - LLM이 반환하는 JSON에서 각 주장(claim)에 붙는 "근거 항목 이름". 예: `signals.category_l2_affinity` (이 사용자가 평소 보는 카테고리와 맞다는 신호). 이 이름이 사전 정의된 화이트리스트 밖이면 거부.
 
 ```python
 # 차단 예시
@@ -79,11 +79,11 @@ flowchart TB
     SRC --> A2["Evidence Pack<br/>유저별 38+ signals"]
   end
 
-  subgraph cards ["② 카드 경로 — LLM 미경유"]
+  subgraph cards ["② 카드 경로 - LLM 미경유"]
     SEL["사이드바: 유저 선택"] --> CARDS["5섹션 카드 렌더<br/>(orchestrator 직접 호출)"]
   end
 
-  subgraph chat ["③ 채팅 경로 — LangGraph 7 노드"]
+  subgraph chat ["③ 채팅 경로 - LangGraph 7 노드"]
     Q["질문 입력"] --> RT{"intent_router"}
     RT -->|general| GEN["일반 응답<br/>⚠️ unverified"]
     RT -->|shopping| LLM["Solar Pro<br/>JSON 사유 생성"]
@@ -97,8 +97,8 @@ flowchart TB
   A2 -->|"검증 화이트리스트"| GATE
 ```
 
-- **`Evidence Pack`이 dual-use**: 같은 파일을 두 곳이 다른 용도로 소비 — LLM에는 "여기 적힌 사실만 인용하세요"라는 **입력**으로, hard_gate에는 "응답이 인용한 이름이 이 목록 안에 있는지" 확인하는 **검증 화이트리스트**(=허용 목록)로
-- **카드 경로는 LLM 미경유** — 추천 후보 자체는 결정론적, hallucination 표면적 ↓
+- **`Evidence Pack`이 dual-use**: 같은 파일을 두 곳이 다른 용도로 소비 - LLM에는 "여기 적힌 사실만 인용하세요"라는 **입력**으로, hard_gate에는 "응답이 인용한 이름이 이 목록 안에 있는지" 확인하는 **검증 화이트리스트**(=허용 목록)로
+- **카드 경로는 LLM 미경유** - 추천 후보 자체는 결정론적, hallucination 표면적 ↓
 - **hard_gate 분기**: 통과한 응답만 사용자 도달, 실패는 응답 차단
 - LangGraph 7 노드: `intent_router → alias_resolver → profile_loader → pack_loader → solar_explainer → hard_gate` (+ 분기 `general_chat`). 다이어그램은 핵심만 표시
 
@@ -134,7 +134,7 @@ python -m pipeline.id_alias \
   --submission ../../outputs/submission_reranker_lgbm.csv \
   --out data/id_aliases.json
 
-# 0b: profile DB — alphabet 1000 sample 중 cart+purchase 상위 300명만 (CF/content 데모 품질용)
+# 0b: profile DB - alphabet 1000 sample 중 cart+purchase 상위 300명만 (CF/content 데모 품질용)
 python -m pipeline.user_profile \
   --train ../../baseline/data/train.parquet \
   --aliases data/id_aliases.json \
