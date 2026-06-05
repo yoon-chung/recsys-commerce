@@ -132,23 +132,18 @@ flowchart TB
     P --> F
     C --> F
 
-    T --> E[⭐ evidence_pack.jsonl<br/>유저별 약 40가지 signal<br/>LLM 직접 입력 전용]
-    S --> E
-
     A --> KB
     P --> KB
     C --> KB
     R --> KB
     Y --> KB
     F --> KB
-    E --> KB
     KB([RAG 지식베이스])
   end
 ```
 
 > **RAG 지식베이스 = 위 모든 산출물을 합친 통합 데이터 레이어**.
-> 그중 ⭐ `evidence_pack.jsonl`이 **LLM이 직접 인용할 사실 카드** (유저당 약 40가지 항목: 자주 보는 카테고리·평소 가격대·최근 활동 등). 나머지 산출물은 5섹션 추천 엔진이 SQL·룩업으로 참조. 런타임 검색 방식: **벡터 유사도 X, 단순 키 조회**.
-
+> 5섹션 추천 엔진이 SQL·룩업으로 참조. 런타임 검색 방식: **벡터 유사도 X, 단순 키 조회**.
 > 모든 산출물은 빌드 시 `id_aliases.json`으로 ID를 매핑함. 다이어그램은 주 소스 1개만 표시(가독성 우선).
 
 **5섹션이 각 노드를 어떻게 쓰는지**:
@@ -161,7 +156,7 @@ flowchart TB
 | ✨ 새로 나온 | Y + P | Y의 14일 풀에서 P의 seen_items 제외 |
 | ↩ 다시 살펴볼 | P | P의 event_log에 시간 감쇠 × 이벤트 가중치 적용 |
 
-> 노드: P profiles · C catalog · R recs · Y recency · F FAISS · ⭐ E (evidence_pack) = 5섹션에 안 쓰임
+> 노드: P profiles · C catalog · R recs · Y recency · F FAISS 
 
 ---
 
