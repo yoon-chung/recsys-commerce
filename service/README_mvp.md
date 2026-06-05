@@ -119,8 +119,6 @@ flowchart TB
     T --> P[user_profiles.db<br/>유저별 행동 로그]
     T --> C[item_catalog.json<br/>아이템 메타]
     S --> R[user_recommendations.json<br/>유저별 Top-10]
-    T --> Y[recency_pool.json<br/>14일 인기 풀]
-    T --> E[evidence_pack.jsonl ⭐<br/>유저별 약 40가지 signal]
 
     P --> F[user_neighbors.npy + pkl<br/>FAISS 이웃]
     C --> F
@@ -129,17 +127,15 @@ flowchart TB
     P --> KB
     C --> KB
     R --> KB
-    Y --> KB
-    E --> KB
     F --> KB
-    KB([RAG 지식베이스<br/>= 런타임 데이터 레이어])
+    KB([RAG 지식베이스])
   end
 ```
 
-> ⭐ **RAG 지식베이스 = 위 7개 파일의 모음** (런타임 데이터 레이어).
-> 그중 `evidence_pack.jsonl`이 **LLM이 직접 보는 사실 카드** (유저당 약 40가지 항목: 자주 보는 카테고리·평소 가격대·최근 활동 등). 나머지 6개는 5섹션 추천 계산에 쓰임. 런타임엔 사용자 ID로 사실 카드를 통째 룩업, **벡터 유사도 검색 없이 단순 키 조회**.
+> **RAG 지식베이스 = LLM 어드바이저가 참조하는 모든 산출물의 모음** (위 6개 파일).
+> 그중 ⭐ `evidence_pack.jsonl`이 **LLM이 직접 보는 사실 카드** (유저당 약 40가지 항목: 자주 보는 카테고리·평소 가격대·최근 활동 등). 나머지 5개는 5섹션 추천 엔진이 SQL·룩업으로 참조. 런타임 검색 방식: **벡터 유사도 X, 단순 키 조회**.
 
-> 모든 산출물은 빌드 시 `id_aliases.json`으로 ID를 매핑함. 다이어그램은 주 소스 1개만 표시(가독성 우선).
+> 단순화 위해 일부 산출물(`recency_pool.json` 14일 풀 등)은 다이어그램에서 생략. 빌드 시 모든 산출물은 `id_aliases.json`으로 ID를 매핑함.
 
 ---
 
