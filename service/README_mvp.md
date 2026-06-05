@@ -93,7 +93,7 @@ flowchart TB
   end
 
   A1 -->|"섹션 재료"| CARDS
-  A2 -->|"LLM 입력 (약 40가지 signal)"| LLM
+  A2 -->|"LLM 입력"| LLM
   A2 -->|"검증 화이트리스트"| GATE
 ```
 
