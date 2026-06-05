@@ -107,28 +107,41 @@ flowchart TB
 위 다이어그램의 `offline` subgraph를 파일 단위로 풀어쓴 것.
 
 ```mermaid
-%%{init: {'theme':'default', 'themeVariables': {'background':'#fff9c4'}}}%%
 flowchart TB
-  T[train.parquet<br/>원천 이벤트 로그]
-  S[submission_reranker_lgbm.csv<br/>Stage 1 추천 Top 10]
+  subgraph BG["오프라인 빌드 (1회)"]
+    direction TB
+    T[train.parquet<br/>원천 이벤트 로그]
+    S[submission_reranker_lgbm.csv<br/>Stage 1 추천 Top 10]
 
-  T --> A[id_aliases.json<br/>UUID ↔ alias 매핑]
-  S --> A
+    T --> A[id_aliases.json<br/>UUID ↔ alias 매핑]
+    S --> A
 
-  T --> P[user_profiles.db<br/>유저별 행동 로그]
-  T --> C[item_catalog.json<br/>아이템 메타]
-  S --> R[user_recommendations.json<br/>유저별 Top-10]
-  T --> Y[recency_pool.json<br/>14일 인기 풀]
-  T --> E([evidence_pack.jsonl ⭐<br/>유저별 약 40가지 signal<br/>= RAG 지식베이스])
+    T --> P[user_profiles.db<br/>유저별 행동 로그]
+    T --> C[item_catalog.json<br/>아이템 메타]
+    S --> R[user_recommendations.json<br/>유저별 Top-10]
+    T --> Y[recency_pool.json<br/>14일 인기 풀]
+    T --> E[evidence_pack.jsonl ⭐<br/>유저별 약 40가지 signal]
 
-  P --> F[user_neighbors.npy + pkl<br/>FAISS 이웃]
-  C --> F
+    P --> F[user_neighbors.npy + pkl<br/>FAISS 이웃]
+    C --> F
 
-  style E fill:#ffffff,stroke:#e65100,stroke-width:4px,color:#000
+    A --> KB
+    P --> KB
+    C --> KB
+    R --> KB
+    Y --> KB
+    E --> KB
+    F --> KB
+    KB([RAG 지식베이스<br/>= 런타임 데이터 레이어])
+  end
+
+  style BG fill:#fff9c4,stroke:#e65100,stroke-width:1px
+  style KB fill:#ffffff,stroke:#e65100,stroke-width:4px,color:#000
+  style E stroke:#e65100,stroke-width:3px
 ```
 
-> ⭐ **RAG 지식베이스 = `evidence_pack.jsonl`**
-> 위 산출물 중 **LLM이 직접 보는 단 하나의 파일**. 한 사용자당 약 40가지 사실 항목(자주 보는 카테고리·평소 가격대·최근 활동 등)을 미리 정리해둠. 런타임엔 사용자 ID로 그 한 명의 사실 묶음을 통째로 꺼내 LLM 컨텍스트로 전달. **벡터 유사도 검색 없이 단순 키 조회**로 끝.
+> ⭐ **RAG 지식베이스 = 위 7개 파일의 모음** (런타임 데이터 레이어).
+> 그중 `evidence_pack.jsonl`이 **LLM이 직접 보는 사실 카드** (유저당 약 40가지 항목: 자주 보는 카테고리·평소 가격대·최근 활동 등). 나머지 6개는 5섹션 추천 계산에 쓰임. 런타임엔 사용자 ID로 사실 카드를 통째 룩업, **벡터 유사도 검색 없이 단순 키 조회**.
 
 > 모든 산출물은 빌드 시 `id_aliases.json`으로 ID를 매핑함. 다이어그램은 주 소스 1개만 표시(가독성 우선).
 
