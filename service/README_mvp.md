@@ -107,6 +107,7 @@ flowchart TB
 위 다이어그램의 `offline` subgraph를 파일 단위로 풀어쓴 것.
 
 ```mermaid
+%%{init: {'theme':'default', 'themeVariables': {'background':'#fff9c4'}}}%%
 flowchart TB
   T[train.parquet<br/>원천 이벤트 로그]
   S[submission_reranker_lgbm.csv<br/>Stage 1 추천 Top 10]
@@ -123,7 +124,7 @@ flowchart TB
   P --> F[user_neighbors.npy + pkl<br/>FAISS 이웃]
   C --> F
 
-  style E fill:#fff9c4,stroke:#e65100,stroke-width:4px,color:#000
+  style E fill:#ffffff,stroke:#e65100,stroke-width:4px,color:#000
 ```
 
 > ⭐ **RAG 지식베이스 = `evidence_pack.jsonl`**
