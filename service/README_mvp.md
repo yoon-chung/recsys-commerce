@@ -134,10 +134,6 @@ flowchart TB
     F --> KB
     KB([RAG 지식베이스<br/>= 런타임 데이터 레이어])
   end
-
-  style BG fill:#fff9c4,stroke:#e65100,stroke-width:1px
-  style KB fill:#ffffff,stroke:#e65100,stroke-width:4px,color:#000
-  style E stroke:#e65100,stroke-width:3px
 ```
 
 > ⭐ **RAG 지식베이스 = 위 7개 파일의 모음** (런타임 데이터 레이어).
