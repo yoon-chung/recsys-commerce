@@ -48,7 +48,7 @@ Python(5섹션 후보 선정)  →  Solar Pro(JSON 사유)  →  hard_gate(5단�
 |---|---|---|
 | 1 | `user_id` 일치 | 응답에 다른 사용자 정보가 섞이지 않았는가 |
 | 2 | `item_id` 후보 범위 안 | LLM이 추천 후보 밖 상품을 끌어오지 않았는가 (밖 = hallucination) |
-| 3 | `claim.evidence_ref ∈ whitelist` ⭐ | LLM이 인용한 **근거 항목 이름**이 Evidence Pack에 사전 정의된 38개 안에 있는가. `evidence_keys()`가 화이트리스트(허용 목록)를 자동 export |
+| 3 | `claim.evidence_ref ∈ whitelist` ⭐ | LLM이 인용한 **근거 항목 이름**이 Evidence Pack에 사전 정의된 약 40가지 안에 있는가. `evidence_keys()`가 화이트리스트(허용 목록)를 자동 export |
 | 4 | 인용 값이 truthy | 근거로 든 값이 실제로 참/유효인가 - `False`/`0`/빈 컬렉션을 근거 삼는 거짓 인용 차단 |
 | 5 | bool 의미 모순 | True인 사실을 부정형으로 둔갑시키지 않았는가 (예: "재고 있음"을 "없음"으로 서술) |
 
@@ -93,7 +93,7 @@ flowchart TB
   end
 
   A1 -->|"섹션 재료"| CARDS
-  A2 -->|"LLM 입력 (38 signals)"| LLM
+  A2 -->|"LLM 입력 (약 40가지 signal)"| LLM
   A2 -->|"검증 화이트리스트"| GATE
 ```
 
