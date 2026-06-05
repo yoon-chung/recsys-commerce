@@ -122,6 +122,8 @@ flowchart TB
 
   P --> F[user_neighbors.npy + pkl<br/>FAISS 이웃]
   C --> F
+
+  style E fill:#fff9c4,stroke:#e65100,stroke-width:4px,color:#000
 ```
 
 > ⭐ **RAG 지식베이스 = `evidence_pack.jsonl`**
