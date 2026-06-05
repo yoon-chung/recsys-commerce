@@ -7,7 +7,7 @@
 | 백엔드 | LangGraph (7 노드 + MemorySaver) |
 | LLM | Upstage Solar Pro · API 없으면 Mock 자동 폴백 |
 | 프론트 | Streamlit (사이드바 dropdown + 5섹션 + 채팅) |
-| 차별점 | Evidence Pack 38+ signals + claim 단위 **hard_gate** |
+| 차별점 | Evidence Pack 약 40가지 signal + claim 단위 **hard_gate** |
 
 ---
 
@@ -21,7 +21,7 @@ Python(5섹션 후보 선정)  →  Solar Pro(JSON 사유)  →  hard_gate(5단�
 ```
 
 - 후보 선정에 LLM 미사용 → hallucination 원천 차단
-- LLM 응답은 **Evidence Pack**(유저별 사실 카드 - 카테고리 affinity·가격대 적합·최근 활동 등 38+ 항목)의 값만 인용 허용
+- LLM 응답은 **Evidence Pack**(유저별 사실 카드 - 카테고리 affinity·가격대 적합·최근 활동 등 약 40가지 항목)의 값만 인용 허용
 - shopping 모드 = 자동 검증 ✓  ·  general 모드 = ⚠️ 미검증 배지
 
 ---
@@ -76,7 +76,7 @@ flowchart TB
     direction LR
     SRC[("train.parquet<br/>+ submission CSV")]
     SRC --> A1["추천 재료<br/>catalog · profiles · recs<br/>recency · FAISS 이웃"]
-    SRC --> A2["Evidence Pack<br/>유저별 38+ signals"]
+    SRC --> A2["Evidence Pack<br/>유저별 약 40가지 signal"]
   end
 
   subgraph cards ["② 카드 경로 - LLM 미경유"]
@@ -102,6 +102,33 @@ flowchart TB
 - **hard_gate 분기**: 통과한 응답만 사용자 도달, 실패는 응답 차단
 - LangGraph 7 노드: `intent_router → alias_resolver → profile_loader → pack_loader → solar_explainer → hard_gate` (+ 분기 `general_chat`). 다이어그램은 핵심만 표시
 
+### 4.1 오프라인 빌드 - 데이터 파일 흐름 (상세)
+
+위 다이어그램의 `offline` subgraph를 파일 단위로 풀어쓴 것.
+
+```mermaid
+flowchart TB
+  T[train.parquet<br/>원천 이벤트 로그]
+  S[submission_reranker_lgbm.csv<br/>Stage 1 추천 Top 10]
+
+  T --> A[id_aliases.json<br/>UUID ↔ alias 매핑]
+  S --> A
+
+  T --> P[user_profiles.db<br/>유저별 행동 로그]
+  T --> C[item_catalog.json<br/>아이템 메타]
+  S --> R[user_recommendations.json<br/>유저별 Top-10]
+  T --> Y[recency_pool.json<br/>14일 인기 풀]
+  T --> E([evidence_pack.jsonl ⭐<br/>유저별 약 40가지 signal<br/>= RAG 지식베이스])
+
+  P --> F[user_neighbors.npy + pkl<br/>FAISS 이웃]
+  C --> F
+```
+
+> ⭐ **RAG 지식베이스 = `evidence_pack.jsonl`**
+> 위 산출물 중 **LLM이 직접 보는 단 하나의 파일**. 한 사용자당 약 40가지 사실 항목(자주 보는 카테고리·평소 가격대·최근 활동 등)을 미리 정리해둠. 런타임엔 사용자 ID로 그 한 명의 사실 묶음을 통째로 꺼내 LLM 컨텍스트로 전달. **벡터 유사도 검색 없이 단순 키 조회**로 끝.
+
+> 모든 산출물은 빌드 시 `id_aliases.json`으로 ID를 매핑함. 다이어그램은 주 소스 1개만 표시(가독성 우선).
+
 ---
 
 ## 5. 모듈 구조
@@ -110,7 +137,7 @@ flowchart TB
 service/mvp/
 ├── pipeline/        offline 빌드 + LangGraph (id_alias, orchestrator, graph, ...)
 ├── advisor/         Solar Pro client + Mock + SYSTEM_PROMPT
-├── evidence_pack/   38+ signals + evidence_keys() 화이트리스트
+├── evidence_pack/   약 40가지 signal + evidence_keys() 화이트리스트
 ├── trust_gate/      hard_gate + self_check + calibration
 ├── ui/              Streamlit app + 카드 컴포넌트
 └── data/            산출물 (id_aliases / profiles.db / catalog / images / ...)
