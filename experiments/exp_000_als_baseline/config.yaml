@@ -46,7 +46,7 @@ items_per_user: 10                # submission.csv items per user
 filter_already_liked: false
 
 # ---- wandb ---------------------------------------------------------------
-# entity 명시 안 하면 계정 default team으로 라우팅됨 (이전 부트캠프 팀으로
+# entity 명시 안 하면 계정 default team으로 라우팅됨 (이전 다른 팀으로
 # 잘못 갔던 사례 있음). 항상 명시하는 게 안전.
 wandb_entity: yooni0125-
 wandb_project: cy-commerce-recsys
