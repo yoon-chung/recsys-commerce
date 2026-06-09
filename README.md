@@ -1,4 +1,5 @@
 # Commerce Behavior Purchase Prediction with RAG-based Shopping Advisor
+### 이커머스 구매 행동 예측 + RAG 기반 쇼핑 어드바이저
 
 ## 개요
 
