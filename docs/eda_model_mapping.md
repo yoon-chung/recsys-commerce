@@ -52,7 +52,7 @@ EDA 수치([eda_findings.md](eda_findings.md)) → 신호 → 모델 커버리�
 
 > **Single TIFU = 0.1175 → 2-stage reranker = 0.1358 (+15.2%)**. 단순 RRF/가중 ensemble 4종은 모두 single best를 못 넘었음 — score-blind aggregation 한계. LGBM reranker가 LOO-overfit 모델을 자동 down-weight해서 lift가 살아남.
 
-> **현업 관점**: 5-model + reranker는 portfolio용 architecture 입증이고, production 서빙에서는 latency·비용 때문에 single-model + 강한 FE/reranker가 현실적인 형태. 이 파이프라인의 lift도 reranker(+15.2%)가 ensemble(0%)을 압도 — production constraint와 같은 방향.
+> **현업 관점**: 5-model + reranker는 paradigm coverage 입증이고, production 서빙에서는 latency·비용 때문에 single-model + 강한 FE/reranker가 현실적인 형태. 이 파이프라인의 lift도 reranker(+15.2%)가 ensemble(0%)을 압도 — production constraint와 같은 방향.
 
 ---
 

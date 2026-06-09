@@ -119,7 +119,7 @@
 
 ### 목표 (재정의)
 
-- **대회 NDCG 1% 짜내기 < 추천 시스템 대표 모델 경험 + 향후 서비스 개발 foundation + 포트폴리오 가치**
+- **대회 NDCG 1% 짜내기 < 추천 시스템 대표 모델 경험 + 향후 서비스 개발 foundation + 기술 학습 가치**
 - 산업 ML 영역 (LightGBM/XGBoost ranker, 무거운 feature engineering, 전환율 학습 등) 은 본 단계에서 제외 — 다른 프로젝트에서 학습 가능
 - 모델링 1주 + 서비스 개발 1주 분할
 
@@ -128,7 +128,7 @@
 | Day | 실험 | paradigm | 가치 |
 |---|---|---|---|
 | 1 | **EASE 직접 구현** (~30줄) | Item-item closed-form (classical) | foundation + 서비스 fast inference |
-| 2-3 | **BSARec port** (저자 GitHub paper-to-code) | Sequential — frequency-domain | ★ AAAI 2024 SOTA, 포트폴리오 정점 |
+| 2-3 | **BSARec port** (저자 GitHub paper-to-code) | Sequential — frequency-domain | ★ AAAI 2024 SOTA, 기술적 도전 핵심 |
 | 4-5 | **DiffRec port** (저자 GitHub paper-to-code) | Diffusion (generative) | ★ SIGIR 2023, paradigm 차별화 |
 | 6 | **LightGCN via RecBole** | Graph CF (mature) | classical-vs-modern 비교 baseline |
 | 7 | **RRF Ensemble** + 제출 + 서비스 인터페이스 정리 | — | Week 2 준비 |
@@ -146,13 +146,13 @@ ALS (exp_000 완료) 까지 합치면 **6개 모델, 5 paradigm** (MF / Item-ite
 | 제외 항목 | 이유 |
 |---|---|
 | LightGBM / XGBoost ranker, 무거운 FE | ML 영역, 우리 목표 (recsys core) 와 결이 다름 |
-| SASRec / TiSASRec / FEARec / SAFERec / MB-STR / TIFU-KNN / CL4SRec | 외부 reference 모델 list 와 중복 (포트폴리오 차별화 ↓) |
+| SASRec / TiSASRec / FEARec / SAFERec / MB-STR / TIFU-KNN / CL4SRec | 외부 reference 모델 list 와 중복 (차별화 가치 ↓) |
 | SR-GNN, NARM session 모드 | cross-session 94.6% — session-aware 모델 부적합 (EDA §15.3) |
 | Mamba4Rec | 롱시퀀스 user 4.1%만 — 효율 우위 발현 어려움 (EDA §4) |
 | Brand text embedding (word2vec init 등) | brand-category anomaly 영향 |
 | LLM4Rec (TallRec, P5 등) | 인프라 부담, 1주 안에 무리 |
 
-### 포트폴리오 강조점 (면접 talking points)
+### 주요 차별점
 
 1. "EDA 인사이트 (time-irregular sequence, CV=4.12) 를 모델 선택 근거로 사용 — frequency-domain 접근 (BSARec)"
 2. "BSARec (AAAI 2024) 저자 GitHub 의 PyTorch 구현을 우리 데이터에 맞게 port"

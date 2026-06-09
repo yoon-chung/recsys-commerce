@@ -204,7 +204,7 @@ Apparel 중심은 유지. Category mix 자체는 normal.
 
 ---
 
-## Mature engineer talking point
+## 한 줄 결론
 
 > "외부 reference 가 cart_boost flag 끄고 점수 +0.0014 얻음. 단순 hyperparameter sensitivity 인지 진짜 mechanism 인지 EDA 로 검증.
 > 
@@ -224,6 +224,6 @@ Apparel 중심은 유지. Category mix 자체는 normal.
 |---|---|
 | 외부 review 시 질문 ("이 데이터셋이 REES46 기반? 이런 artifact 산업에선 어떻게 detect?") | ⭐⭐⭐ |
 | 추가 검증 (시간대별 anomaly start point) | ⭐ |
-| 그냥 portfolio talking point 로 활용 | ⭐⭐⭐ |
+| 그냥 한 줄 결론으로 활용 | ⭐⭐⭐ |
 
-**추천**: portfolio talking point 로 활용. 깊이 파지 않음.
+**추천**: 한 줄 결론으로만 활용. 깊이 파지 않음.

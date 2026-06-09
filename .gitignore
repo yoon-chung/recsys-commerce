@@ -12,7 +12,6 @@ baseline/
 
 # ===== 학습/제출 산출물 =====
 /output/
-/outputs/
 experiments/exp_*/saved/
 experiments/exp_*/wandb/
 experiments/exp_*/predictions.parquet
@@ -43,6 +42,10 @@ secrets.json
 .netrc
 .ssh/
 
+# ===== 작업 instruction (로컬 전용) =====
+# CLAUDE.md 는 본인 작업 가이드. 외부 공개 X.
+CLAUDE.md
+
 # ===== 캐시 =====
 __pycache__/
 *.pyc
@@ -69,7 +72,8 @@ Thumbs.db
 
 # ===== 제출 CSV 백업 (raw user_id / item_id 포함) =====
 # 실험 기록 자체는 experiments/log.md (git-tracked) 로 통합됨
-submissions/*.csv
+# 확장자 없는 submission 파일도 있어 폴더 전체 무시.
+submissions/
 
 # ===== Jupyter 노트북 (셀 출력에 데이터 원본 ID 노출 위험) =====
 # 어디든 모든 .ipynb를 ignore. 공개해도 안전한 walkthrough 노트북은

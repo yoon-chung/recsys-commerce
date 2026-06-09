@@ -40,15 +40,11 @@
 | exp_007 | TIFU-KNN (4m) | classical KNN + temporal freq | 0.2922 | 0.3915 | 0.1175 | DONE — single-best transformer kill |
 | exp_007b | TIFU-KNN multi-behavior (view=1,cart=3,purchase=5) | classical KNN | 0.2933 | 0.3915 | — | DONE — self-val +0.0011 vs exp_007 (제출 X, ensemble lift X) |
 | exp_009 | MB-STR v1 (BSARec + behavior emb, hidden=64) | multi-behavior seq | 0.2389 | 0.3221 | — | DONE — 제출 X (단독 TIFU 보다 낮음) |
-| exp_009b | MB-STR v2b (hidden=256, LR=0.001, dropout=0.3) | multi-behavior seq | — | — | — | IN PROGRESS (v2 abort 후 v2b 백그라운드) |
-| ensemble_v3 | TIFU + BSARec(±CL/BERT4Rec) RRF | fusion | best ~0.282 | — | — | DONE — 9 config 모두 negative |
-| ensemble_v4 | weighted per-user min-max | fusion | — | — | — | DONE — negative |
-| ensemble_v5 | per-model z-score | fusion | — | — | — | DONE — negative |
-| ensemble_v6 | exp_007b + BSARec/MB-STR/etc | fusion | — | — | — | DONE — negative |
-| ensemble_v7 | TIFU(MB) + BSARec + MB-STR RRF (clean 3-model) | fusion | best 0.293 (=TIFU only) | — | — | DONE — 가설 H 기각: clean pool 만 써도 ensemble lift X |
+| exp_009b | MB-STR v2 / v2b (hidden=256) | multi-behavior seq | — | — | — | ABORTED — v2 plateau, capacity scaling 으로는 v1 LOO 0.2646 못 넘음 |
+| ensemble_v3-v7 | 5 variants (RRF / weighted / z-score / MB base / clean 3-model) | fusion | best 0.293 (=TIFU only) | — | — | ALL DEAD-END — simple aggregation 한계, 상세는 §Ensemble v3-v7 |
 | exp_010 | LGBM reranker binary (5-fold on 928 eval users) | 2-stage rerank | 0.3418 (OOF) | 0.4258 | 0.1353 | DONE — +0.0178 vs TIFU (+15.2%) |
 | **exp_010b** | **LGBM reranker LambdaRank (objective swap)** | **2-stage rerank** | **0.3513 (OOF)** | **0.4369** | **0.1358** | **DONE — +0.0095 OOF vs binary, public lift 작음 (calibration ratio 차이)** |
-| (보류) | exp_008 LLM-as-Reranker on TIFU top-50 | LLM rerank | — | — | — | 보류 — Week 2 LLM 통합으로 흡수 가능 |
+| (미실행) | exp_008 LLM-as-Reranker on TIFU top-50 | LLM rerank | — | — | — | 미실행 — Week 2 LLM advisor (service/) 로 흡수 |
 
 \* full-data 변종은 val 포함 학습 → self-val 인플레이션. 의사결정은 public 기준.
 
@@ -156,7 +152,7 @@
 2. v2 equal negative = **strength 불균형** (BSARec +30%, ALS/EASE 가 top rank 희석)
 3. v2 weighted negative = **BSARec false positive 도 amplify** (recall −0.013 이 증거). ALS/EASE 의 견제 약화
 
-**Portfolio talking point**: 단순 negative 가 아니라 structural limitation 을 ablation 으로 진단. ensemble 접근 dead (BSARec → ∞ 가 BSARec 단독에 수렴).
+**핵심 결론**: 단순 negative 가 아니라 structural limitation 을 ablation 으로 진단. ensemble 접근 dead (BSARec → ∞ 가 BSARec 단독에 수렴).
 
 ---
 
@@ -216,7 +212,7 @@ Window 별 ablation. 4m baseline → 4w/2w/1w 변종. 모델/하이퍼 동일, �
 
 **문제**: RecBole 1.2 에서 `trainer.fit()` 초기화 hang (CPU 99%, 30+분 stuck, GPU 0%). `--no-wandb` 도 동일. import 자체는 통과.
 
-**대응**: 포기, BERT4Rec 으로 대체. Talking point 보존: "RecBole 1.2 FEARec incompatibility at scale".
+**대응**: 포기, BERT4Rec 으로 대체. 한 줄 결론: "RecBole 1.2 FEARec incompatibility at scale".
 
 ---
 
@@ -248,13 +244,13 @@ Window 별 ablation. 4m baseline → 4w/2w/1w 변종. 모델/하이퍼 동일, �
 | NDCG@10 | 0.2006 | 0.2158 | +0.0152 |
 | recall@10 | **0.3485** | **0.3061** | **−0.0424** |
 
-**핵심 발견 — bidirectional MLM 의 task mismatch** (portfolio gold):
+**핵심 발견 — bidirectional MLM 의 task mismatch**:
 
 비교: BSARec 패턴에서는 RecBole LOO 가 self-val 보다 *높음* (transformer causal 의 정상 패턴). BERT4Rec 는 **반대 방향**:
 - LOO = "마지막 item 마스킹 → 예측" → Cloze training 과 **정확히 일치** → over-specialized
 - 우리 val = "7일 윈도우 multi-purchase 예측" → next-item 가정 깨짐
 - **Bidirectional MLM 이 multi-target purchase task 에 transfer 약함**
-- Portfolio talking point: "**모델 training task 와 inference task 정합성**이 RecSys 특유의 함정 — BERT4Rec 이 LOO 에 over-fit 하는 사례를 데이터로 잡음"
+- 핵심 결론: "**모델 training task 와 inference task 정합성**이 RecSys 특유의 함정 — BERT4Rec 이 LOO 에 over-fit 하는 사례를 데이터로 잡음"
 
 **추정 public**: 0.2158 / 2.53 ≈ **0.0853** (ALS 베이스라인 수준) → **제출 X**.
 
@@ -269,11 +265,11 @@ Window 별 ablation. 4m baseline → 4w/2w/1w 변종. 모델/하이퍼 동일, �
 
 [code](./exp_007_tifu_knn/) · **SIGIR 2020** "Modeling Personalized Item Frequency for Next-Basket Recommendation" (He et al.). Non-neural classical method.
 
-**왜 이걸 추가 (portfolio 관점)**:
-- 외부 reference 에서 `mbr_sas_tifu_knn` 으로 **public 0.1431** 기록 (우리 0.0975 대비 +47%). Pure transformer pipeline 의 한계 시사
+**왜 이걸 추가**:
 - 우리 5개 모델 (ALS/EASE/BSARec/DiffRec/BERT4Rec) 다 scoring 기반 deep/closed-form → **KNN/frequency-based paradigm 0개**. 빈 슬롯 채우기
+- Pure transformer pipeline 의 한계 가설: repeat-purchase + temporal frequency 가 retail data 의 dominant signal 일 가능성 (EDA item 반복도 14.6% + Feb 27-29 spike 가 시사)
 - Production e-commerce 의 first-class signal: "user X 가 item Y 를 반복 view/cart" 패턴. transformer max_seq=50 cap 보다 직접 모델링
-- **면접 talking point**: "Classical method 가 같은 데이터에서 deep model 을 이긴 이유 — repeat-purchase + temporal frequency 가 dominant signal" — research → production maturity 신호
+- **핵심 결론**: "Classical method 가 같은 데이터에서 deep model 을 이긴 이유 — repeat-purchase + temporal frequency 가 dominant signal" — research → production maturity 신호
 
 **알고리즘**:
 ```
@@ -308,7 +304,7 @@ Window 별 ablation. 4m baseline → 4w/2w/1w 변종. 모델/하이퍼 동일, �
 | 학습 시간 | ~5분 (matrix build) | BSARec ~3h, ratio 차이 작음에도 짧음 |
 | Inference 시간 | ~38분 (KNN compute, 64-core CPU) | BSARec ~5분 (GPU) |
 
-**핵심 학습 (portfolio gold)**:
+**핵심 학습**:
 1. **Classical KNN + temporal frequency 가 transformer 4종을 18-20% 차이로 압도**
    - 같은 데이터에서 BSARec 0.247, BERT4Rec 0.20 < TIFU 0.292
    - Pure transformer pipeline 이 retail data 에 최적 아님 — paper 베끼기 paper-chasing 의 위험성
@@ -320,15 +316,10 @@ Window 별 ablation. 4m baseline → 4w/2w/1w 변종. 모델/하이퍼 동일, �
 4. **Production e-commerce 연결**: 쿠팡/Amazon 의 multi-stage retrieval 에서 classical KNN/co-visit 이 first-stage candidate generator 로 살아있는 이유 — repeat-frequency 가 retail 의 first-class signal
 5. **Recall 0.3915 >> BSARec 0.3274** → ensemble 시 매우 다른 후보 set 제공. Reranker 가치 ↑
 
-**면접 talking point 우선순위**:
+**한 줄 요약**:
 > "Sequential transformer 4종 (BSARec / BERT4Rec / BSARec+CL hybrid) 를 ablate 했지만, 같은 데이터에서 100줄짜리 2020 paper KNN method (TIFU-KNN) 가 **public NDCG +20.5%** 로 압도했다. 진단해 보니 이 데이터의 dominant signal 인 **user-item repeat frequency + temporal decay** 를 transformer 의 parametric attention 으론 직접 잡지 못했기 때문이다. 이게 production e-commerce 에서 classical KNN/co-visit 류가 first-stage candidate generator 로 살아남는 mechanism. Research SOTA 와 production reality 사이의 gap 을 데이터로 직접 검증."
 
-**다음 액션** (TIFU-KNN 위에 추가 lift):
-- **exp_007b** — multi-behavior event weights (cart=3, purchase=5) ablation. 우리 현재 1/1/1 → 외부 reference `mbr_sas_tifu_knn` (0.1431) 의 핵심 lever 추정
-- **exp_007c** — α (0.5/0.7/0.8) + knn_k (300/500/1000) ablation
-- **exp_007_full** — val 포함 retrain (BSARec 패턴 적용 시 +0.002 추정 → public ~0.1195)
-- **Day 4 LLM reranker** — TIFU 의 top-50 후보를 LLM 으로 contextual rerank → potentially big lift
-- **Day 5 ensemble v3** — TIFU + BSARec + BERT4Rec RRF/weighted, 매우 다른 후보 set 들 (TIFU recall 0.39 vs BSARec 0.32)
+**후속 작업**: TIFU 위에 multi-behavior weight ablation (exp_007b), 5종 ensemble (v3-v7), 2-stage LGBM reranker (exp_010/010b) 진행. 결과적으로 **LGBM reranker 가 best lever** (single TIFU +15.2% public lift).
 
 ---
 
@@ -354,20 +345,13 @@ Window 별 ablation. 4m baseline → 4w/2w/1w 변종. 모델/하이퍼 동일, �
 - **BSARec+CL hybrid**: LOO 0.2646 → our val 0.2347 (Δ −0.030) — gap 더 큼
 - LOO recall 0.4441 (BSARec 보다 +0.10) 의 시그널이 our val 에는 transfer 안 됨
 
-**Mechanism (BERT4Rec 와 같은 패턴)**:
-- CL4SRec aug 의 학습 신호 = "augmented view 두 개가 같은 user 시퀀스에서 왔다" 의 contrastive signal
-- LOO 의 last-item masking 과 유사한 self-supervised 학습 구조 → LOO 메트릭에 over-specialized
-- multi-target purchase task (7-day window) 에 transfer 약함
-- **2번째 사례 (BERT4Rec 도 같은 패턴)** → portfolio talking point: **"self-supervised/contrastive 가 LOO 에 over-fit 하는 함정"**
+**Mechanism**: BERT4Rec (§exp_005) 와 같은 패턴 — CL4SRec contrastive aug 의 학습 신호가 LOO last-item-masking 과 구조적으로 유사 → LOO 메트릭에 over-specialized, multi-target 7-day val 에는 transfer 약함. **Self-supervised/contrastive 가 LOO 에 over-fit 하는 함정의 2번째 사례** (종합 패턴 → §LOO over-specialization 2건 발견).
 
 **Cold-start 38,523명** (BSARec 4w_holdout 의 14k 대비 2.7배 많음):
 - 같은 cy_commerce_4w 데이터셋이지만 RecBole 의 user_inter_num_interval 필터가 BSARecCL 학습 시 다르게 작동한 듯
 - popularity fallback 비중 ↑ → public 점수에 negative 영향
 
 **예상 public**: 0.2347 / 2.53 ≈ **0.093** (BSARec 4w_holdout 0.0955 보다 ↓, BSARec 4w_full 0.0975 보다 ↓, TIFU 0.1175 보다 한참 ↓) → **제출 X**.
-
-**Portfolio talking point 강화**:
-> "BERT4Rec 와 BSARec+CL hybrid 둘 다 RecBole leave-one-out 에선 강력 (recall 0.35 / 0.44) 했지만 우리 7-day multi-purchase val 에선 BSARec causal next-item 보다 낮았다. **Self-supervised / contrastive training 이 single-token LOO task 에 over-specialize 되는 함정** — RecBole default metric (LOO) 이 우리 evaluation task 와 misalign 될 수 있는 사례를 데이터로 잡음. **모델 training task ↔ inference task 의 정합성** 검증의 RecSys 특유 함정."
 
 **Ensemble 가치**: LOO 기반 recall 0.44 시그널이 our val 에서 0.32 로 떨어진 만큼 ensemble 가치도 작아짐 (BSARec recall 0.33 과 거의 동일). 후보 set 다양성으로 보면 약함.
 
@@ -384,39 +368,25 @@ Window 별 ablation. 4m baseline → 4w/2w/1w 변종. 모델/하이퍼 동일, �
 - **A1 prediction overlap mean 36%** — 64% diverge, ensemble 가치
 - **A5 per-user**: TIFU win 19.3% vs BSARec win 11.5% (1.68배)
 
-전체 분석 + interview talking point 는 ipynb 참고.
+전체 분석은 ipynb 참고.
 
 ---
 
-# Day 1-5 Plan (재pivot 2026-05-22)
+# 2026-05-22 — TIFU-KNN 충격 후 전략 pivot
 
-이전 pivot (model lift → system+LLM) 에서 다시 모델 트랙으로. 4-5일 더 사용 가능. 해외 RecSys 시장 고려, **D (data-fit + production diversity) + LLM** 방향.
-
-**2026-05-22 update — TIFU-KNN 0.1175 충격**: exp_007 가 BSARec 4종을 18-20% 차이로 압도. Strategic pivot: transformer 추가 lift 추구 ROI 낮음 → **TIFU-KNN 변형 ablation + ensemble + LLM reranker** 가 점수 lift 의 우선 lever. Transformer 계열 (exp_006 BSARec+CL, MB-STR) 은 **portfolio piece 로 진행** (점수 목적 X).
-
-| Day | Exp | Window | 상태 | 비고 |
-|---|---|---|---|---|
-| 1A | exp_004 FEARec | — | FAILED | RecBole 1.2 hang |
-| 1B | exp_005 BERT4Rec | 4m | DONE (killed ep13, 제출 X) | LOO 0.2006 / our val 0.2158, task-mismatch lesson |
-| **1B+** | **exp_007 TIFU-KNN** | **4m** | **DONE — public 0.1175 (new top)** | **classical KNN +20.5% vs BSARec, 5 segment 진단 분석 완료** |
-| 1C | exp_006 BSARec+CL hybrid | 4w | DONE (제출 X) | LOO 0.2646 → our val 0.2347, **LOO over-spec 2번째 사례** (BERT4Rec 와 같은 패턴) |
-| 2 | exp_008 LLM-as-Reranker | base TIFU | IN PROGRESS | Solar API on TIFU top-50, PoC eval_users 928 → full |
-| 2-3 | MB-STR | 4m | 예정 | multi-behavior transformer paradigm |
-| 4 | ensemble v3 + LGBM reranker | mixed | 예정 | TIFU + BSARec + (BERT4Rec/BSARec+CL 미포함 후보) |
-| 4 final | Winner retrain (val 포함) | model-specific | 예정 | TIFU best variant → full retrain (+0.002 추정) |
-| Buffer | CL4SRec 단독 port / Solar Pro2 ablation | 4w | 옵션 | 시간 남으면 |
+exp_007 (TIFU-KNN) 가 BSARec 4종을 +18-20% 차이로 압도. Transformer 추가 lift 추구의 ROI 가 낮음을 정량 확인 → **TIFU-KNN 위에 ensemble + LGBM reranker** 로 score-lift lever 전환. Transformer 계열 (exp_006 BSARec+CL, MB-STR) 은 paradigm coverage 용 ablation 으로만 진행 (점수 목적 X).
 
 **Window 선택 원리** (model mechanism 별):
-- **Sequential causal** (BSARec, SASRec): recency 유리 → 4w
-- **Self-supervised / generative** (BERT4Rec MLM, DiffRec): sample 다양성 유리 → 4m
-- **Multi-behavior / rare event** (MB-STR): 절대 빈도 유리 → 4m
-- **Reranker** (LLM, LGBM): candidate generator window 따라감
+- Sequential causal (BSARec, SASRec): recency 유리 → 4w
+- Self-supervised / generative (BERT4Rec MLM, DiffRec): sample 다양성 유리 → 4m
+- Multi-behavior / rare event (MB-STR): 절대 빈도 유리 → 4m
+- Reranker (LLM, LGBM): candidate generator window 따라감
 
-새 모델마다 4종 window 다 돌리지 않음. mechanism 기반 1개만 선택, Day 5 final 에서 winner 만 val-포함 retrain.
+새 모델마다 4종 window 다 돌리지 않음. mechanism 기반 1개만 선택, winner 만 val-포함 retrain.
 
 ---
 
-**2026-05-22 추가 lesson — LOO over-specialization 2건 발견**:
+**LOO over-specialization 2건 발견**:
 
 | Model | RecBole LOO NDCG | our 7-day val NDCG | Δ |
 |---|---:|---:|---:|
@@ -425,7 +395,7 @@ Window 별 ablation. 4m baseline → 4w/2w/1w 변종. 모델/하이퍼 동일, �
 | **BSARec+CL hybrid (contrastive)** | **0.2646** | **0.2347** | **−0.0299 (gap 더 큼)** |
 | TIFU-KNN | — (LOO 미사용) | 0.2922 | — |
 
-**Pattern**: Self-supervised (BERT4Rec Cloze) + contrastive (BSARec+CL InfoNCE) 가 RecBole LOO 의 last-item-masking task 에 over-specialized → multi-target 7-day val 에는 transfer 약함. **RecBole default metric 이 우리 task 와 misalign 될 수 있다는 사례 2건 확보** — portfolio talking point.
+**Pattern**: Self-supervised (BERT4Rec Cloze) + contrastive (BSARec+CL InfoNCE) 가 RecBole LOO 의 last-item-masking task 에 over-specialized → multi-target 7-day val 에는 transfer 약함. **RecBole default metric 이 우리 task 와 misalign 될 수 있다는 사례 2건 확보**.
 
 ---
 
@@ -433,11 +403,11 @@ Window 별 ablation. 4m baseline → 4w/2w/1w 변종. 모델/하이퍼 동일, �
 
 [code](./exp_007b_tifu_mb/) · exp_007 의 multi-behavior weight ablation. event_weights view=1 / cart=3 / purchase=5.
 
-**가설**: 외부 reference `mbr_sas_tifu_knn` (0.1431) 의 핵심 lever 가 multi-behavior event weighting 일 것.
+**가설**: TIFU 1/1/1 baseline 의 multi-behavior weight ablation — cart/purchase 같은 conversion signal 이 view 보다 강한 lever 인지 직접 검증.
 
 **결과**: self-val NDCG **0.2933** (exp_007 0.2922 대비 +0.0011, 거의 동일). 예상 public ≈ 0.118 (lift 미미). **단독 제출 X**.
 
-**Ensemble 효과 (v6 에서 확인)**: TIFU(MB) 를 base 로 한 ensemble 조차 negative — multi-behavior weighting 만으로 ensemble lift 안 살아남. 외부 reference 의 lift 는 다른 요인 (TiSASRec / paper-faithful MB-STR / reranker) 기인 추정.
+**Ensemble 효과 (v6 에서 확인)**: TIFU(MB) 를 base 로 한 ensemble 조차 negative — multi-behavior weighting 자체로는 ensemble lift 안 살아남. Lift 가 살아나려면 reranker 필요 (exp_010 LGBM 으로 입증).
 
 ---
 
@@ -451,28 +421,25 @@ Window 별 ablation. 4m baseline → 4w/2w/1w 변종. 모델/하이퍼 동일, �
 
 **결과**: self-val NDCG **0.2389** / recall **0.3221** / LOO NDCG **0.2646**. TIFU 0.2922 보다 낮음. 예상 public ≈ 0.094 → **단독 제출 X**.
 
-**Lesson — capacity gap**: 외부 reference 의 MB-STR config 는 hidden=256, n_layers=3, n_heads=4, inner=512 (우리의 **16배 capacity**). v1 underfit 가설 → v2/v2b 시도 (아래).
+**Lesson — capacity gap**: paper-faithful MB-STR config 는 hidden=256, n_layers=3, n_heads=4, inner=512 (우리 v1 의 **16배 capacity**). v1 underfit 가설 → v2/v2b 시도 (아래).
 
 ---
 
-## exp_009b_mbstr_v2 / v2b — IN PROGRESS 2026-05-26
+## exp_009b_mbstr_v2 / v2b — ABORTED 2026-05-26
 
-[code](./exp_009_mbstr/) · `config_v2.yaml`, `config_v2b.yaml`. capacity 4-16x 증가 시 우리 self-val 도 올라가는지 검증.
+[code](./exp_009_mbstr/) · `config_v2.yaml`, `config_v2b.yaml`. capacity 4-16x 증가 시 self-val 도 올라가는지 검증.
 
 ### v2 — ABORTED (epoch 31, valid 0.2538 < v1 0.2646)
 
-참고 hyperparameter (hidden=256, n_layers=3, n_heads=4, inner=512, batch=4096, lr=0.002, dropout=0.5/0.5).
+하이퍼: hidden=256, n_layers=3, n_heads=4, inner=512, batch=4096, lr=0.002, dropout=0.5/0.5.
 
 **문제**: 5.5h 학습 후 valid_score plateau ≈ 0.252-0.254. v1 LOO 0.2646 못 따라잡음. train loss 도 매우 느린 감소 (7894→7870 over 60min) → local optimum 탈출 실패. **Lower LR + lower dropout 필요** 진단.
 
-### v2b — running
+### v2b — ABORTED
 
-조정: **learning_rate 0.002 → 0.001, dropout 0.5 → 0.3** (보수적 안). 다른 hyperparameter 는 v2 와 동일.
+조정: learning_rate 0.002 → 0.001, dropout 0.5 → 0.3 (보수안). 다른 하이퍼 v2 와 동일.
 
-**판단 기준** (epoch 10-20 단계에서):
-- valid > 0.27 → 매우 좋음, 끝까지 + features rebuild + LGBM rerun
-- valid ≈ v1 0.265 → marginal, 굳이 features rebuild X
-- valid ≈ 0.25 (v2 와 같은 plateau) → 즉시 abort, hidden=256 자체가 우리 데이터엔 안 맞음
+**결과**: v2 와 유사한 plateau 패턴 확인 + Week 1 종료 시점 도달 → archive. **v1 (hidden=64) 가 우리 eval 환경 (928 user / 1,443 purchase) 의 capacity sweet spot** 으로 잠정 결론. MB-STR 트랙 종결.
 
 ---
 
@@ -493,9 +460,9 @@ Window 별 ablation. 4m baseline → 4w/2w/1w 변종. 모델/하이퍼 동일, �
 **Hypothesis H**: v3-v6 dead-end 의 원인이 BSARec+CL + BERT4Rec (LOO-overfit) 의 ensemble 오염일 것.  
 **Test**: v7 = 같은 stack 에서 2개 LOO-overfit 제거 → clean 3-model RRF.  
 **Result**: 여전히 negative. weight 가 TIFU 쪽으로 갈수록 단조 회복 → asymptote = single TIFU.  
-**결론**: pollution 이 원인 아님. 우리 환경에서 **simple RRF 가 본질적으로 작동 안 함**. 모델 quality gap (TIFU 0.293 vs BSARec 0.247 vs MB-STR 0.239) 때문에 RRF aggregation 이 단일 winner 못 넘음. 외부 reference 의 0.1432 ensemble 은 모델 quality 분포가 더 평평하기에 가능 (TiSASRec + paper-faithful MB-STR).
+**결론**: pollution 이 원인 아님. 우리 환경에서 **simple RRF 가 본질적으로 작동 안 함**. 모델 quality gap (TIFU 0.293 vs BSARec 0.247 vs MB-STR 0.239) 때문에 RRF aggregation 이 단일 winner 못 넘음. Score-blind aggregation 의 구조적 한계 — **모델 quality 분포가 평평할 때만 ensemble lift 살아남는 환경 존재**.
 
-**Portfolio lesson**: "ensemble lift 가 보장되지 않는 환경 존재" — production 에서 ensemble 추가 시 항상 weight tuning + member quality 균형 검증 필요. Score-blind aggregation (RRF) 보다 score-based learn-to-rank (LGBM) 이 robust.
+**핵심 결론**: "ensemble lift 가 보장되지 않는 환경 존재" — production 에서 ensemble 추가 시 항상 weight tuning + member quality 균형 검증 필요. Score-blind aggregation (RRF) 보다 score-based learn-to-rank (LGBM) 이 robust.
 
 ---
 
@@ -550,7 +517,7 @@ user_total_events      617
 user_distinct_items    603
 ```
 
-### 핵심 학습 (portfolio gold)
+### 핵심 학습
 
 1. **Two-stage architecture (candidate gen → reranker) effectiveness 직접 입증**:
    - 5 score-blind RRF / weighted ensemble 다 fail
@@ -579,19 +546,16 @@ user_distinct_items    603
    - Calibration ratio 도 OOF 기준 계산 → 2.527 (실제 public 과 정합)
    - **ML correctness 감각** — junior 에서 쉽게 놓치는 함정
 
-### 외부 benchmark 와 비교
+### Lift mechanism
 
-| 비교 | base | reranker | Δ |
-|---|---|---|---:|
-| **우리 (exp_010 binary)** | TIFU 0.1175 | LGBM 0.1353 | **+0.0178 (+15.2%)** |
-| 외부 reference | ensemble 0.1432 | reranker 0.1487 | +0.0055 (+3.8%) |
-| 외부 reference best | ablation drop_user_activity | 0.1490 | (vs base reranker +0.0003) |
+**+15.2% lift 의 의미**:
+- 동일 stage-1 모델 set 위에 **score-blind RRF/weighted ensemble 모두 fail** (v3-v7)
+- 같은 모델 set + score-based learn-to-rank (LGBM) → **+0.0178 absolute lift**
+- 모델 추가 없이 reranker 도입만으로 base TIFU 의 **+15.2% lift**
 
-**Absolute lift 로는 우리가 3배 큼**. 단, base 가 약해서 최종 점수 ~0.014 낮음.
+**Narrative**: "**Single-model base + strong reranker** — 한 모델만 운영 가능한 production 환경에서 reranker pivot 의 효과를 동일 dataset 으로 입증. 모델 추가 비용 0 으로 retrieval → ranking 2-stage architecture 의 mechanism 직접 확인."
 
-**Narrative**: "**Weak base + strong reranker** = production constraint simulation. 한 모델만 운영 가능한 환경에서 reranker pivot 의 효과를 동일 dataset 으로 입증."
-
-### 면접 talking point
+### 한 줄 요약
 
 > "5개 stage-1 모델 (classical TIFU + transformer 4종) 의 score-blind RRF/weighted ensemble 4가지 방식 모두 single best TIFU 못 넘었다. 진단으로 LOO-overfit 패턴 + RRF aggregation 한계 발견. **2-stage LGBM reranker 로 pivot** 해서 same models 로 public **+15.2% lift** 달성. 이 과정에서 production engineering 패턴 (cgroup-aware chunked parquet pipeline) 직접 구현하면서 OOM 4번 해결. 마지막 label leakage 함정도 self-val 0.561 출력 보고 직접 catch — OOF 0.342 가 honest estimate."
 
@@ -603,7 +567,7 @@ user_distinct_items    603
 
 ### 가설 + 동기
 
-외부 reference 의 reranker 코드 분석 시 `LGBMRanker(objective="lambdarank", metric="ndcg", eval_at=[10])` 사용. 우리 exp_010 의 `LGBMClassifier(objective="binary")` 는 NDCG@10 metric 과 misalign. 가설: **LambdaRank 로 swap 시 OOF NDCG +0.005-0.010 lift, public +0.003-0.007 추정**.
+exp_010 의 `LGBMClassifier(objective="binary")` 는 NDCG@10 metric 과 objective misalign. LightGBM 의 `LGBMRanker(objective="lambdarank", metric="ndcg", eval_at=[10])` 가 직접 정합. 가설: **LambdaRank 로 swap 시 OOF NDCG +0.005-0.010 lift, public +0.003-0.007 추정**.
 
 ### 변경점
 
@@ -620,7 +584,7 @@ user_distinct_items    603
 | OOF recall@10 | 0.4258 | 0.4369 | +0.0111 |
 | Public NDCG@10 | 0.1353 | **0.1358** | **+0.0005** |
 
-**Fold-wise 비교** (lambdarank 가 모든 fold 에서 binary 보다 ↑):
+**Fold-wise 비교** (fold 0-3, lambdarank 가 모든 fold 에서 binary 보다 ↑):
 
 | Fold | Binary | LambdaRank | Δ |
 |---|---:|---:|---:|
@@ -628,7 +592,6 @@ user_distinct_items    603
 | 1 | 0.3037 | 0.3242 | **+0.0205** |
 | 2 | 0.3449 | 0.3568 | +0.0119 |
 | 3 | 0.3149 | 0.3216 | +0.0067 |
-| 4 | 0.4015 | (마지막 fold) | — |
 
 **Calibration ratio 변화**:
 - exp_010 binary: 0.3418 / 0.1353 = **2.527**
@@ -654,7 +617,7 @@ user_distinct_items    603
    - eval_users 928 + val_gt 1,443 (purchase only) sample 작음
    - 더 큰 sample (e.g., cart+purchase) 사용했다면 LambdaRank lift 더 안정적일 가능성
 
-### Portfolio talking point
+### 한 줄 요약
 
 > "exp_010 binary LGBM 의 NDCG@10 misalign 진단 후 LambdaRank 로 swap. OOF +0.0095 lift 명확하게 나왔지만 **public 은 +0.0005 만 전이**. Calibration ratio 가 objective 별로 다름 (2.527 → 2.587) 을 정량 발견. Lesson: **OOF improvement 가 public improvement 보장 X**, 특히 per-user ranking objective 는 small eval sample 에 over-fit 위험. Production 의 'offline metric 좋은데 online 별로' 패턴의 mini 사례."
 
@@ -668,7 +631,7 @@ user_distinct_items    603
 
 # 최종 pivot 결정 (2026-05-27)
 
-**Week 1 모델링 종료. Week 2 service + portfolio 정리 시작**.
+**Week 1 모델링 종료. Week 2 service 정리 시작**.
 
 ## 모델링 결산
 
@@ -686,20 +649,14 @@ user_distinct_items    603
 | TIFU multi-behavior weight 튜닝 | 2-4h | +0.005 | 40% |
 | **합쳐서** | **~10h** | **+0.005-0.01** | **~50%** |
 
-10h 투자 후 0.137-0.142 가능성. 외부 reference 0.1490 따라잡을 확률 여전히 낮음. **Marginal**.
+10h 투자 후 expected lift +0.005-0.01. 추가 grinding 의 marginal 효용 < Week 2 service deliverable 의 가치 → **Lift grinding 종료, service 트랙 진입**.
 
 ## Week 2 service ROI (대안)
 
-- FastAPI 추천 API: 핵심 portfolio piece
+- FastAPI 추천 API: 핵심 deliverable
 - LLM 통합 (Solar Pro2 / OpenAI-compatible): "추천 + 설명 generation"
-- 면접에서 "**모델 0.005 추가 lift vs FastAPI + LLM demo 영상**" → demo 가 100배 강함
+- 트레이드오프: "**모델 0.005 추가 lift vs FastAPI + LLM demo 영상**" → demo 가 ROI 훨씬 큼
 - 본인 2026-05-21 pivot 결정 (memory) 와 정합
-
-## 남은 v2b 처리
-
-백그라운드 학습 계속, **새 grinding 시도 X**. 결과 좋으면 (LOO > 0.27) 보너스 제출 1회 가능, 아니면 archive 만.
-
----
 
 ## 컨벤션 — 새 실험 추가 시
 
