@@ -111,7 +111,7 @@ flowchart TB
   subgraph BG["오프라인 빌드 (1회)"]
     direction TB
     T[train.parquet<br/>원천 이벤트 로그]
-    S[submission_reranker_lgbm.csv<br/>Stage 1 추천 Top 10]
+    S[submission_reranker_lgbm.csv<br/>모델 추천 Top 10]
 
     T --> A[id_aliases.json<br/>UUID ↔ alias 매핑]
     S --> A

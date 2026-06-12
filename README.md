@@ -7,7 +7,7 @@ RecSys 프로젝트. 4개월(2019-11~2020-02) 이커머스 행동 로그를 시�
 
 ## 주요 차별점
 
-- **Classical KNN이 transformer 4종 (BSARec 등 SOTA 포함) 압도** - TIFU-KNN +20.5% public vs BSARec, 5-segment 진단 분석으로 mechanism 정량 증명 ([docs/diagnosis_tifu_vs_bsarec.ipynb](docs/diagnosis_tifu_vs_bsarec.ipynb))
+- **Classical KNN이 순차추천 4종 (BSARec 등 SOTA 포함) 압도** - TIFU-KNN +20.5% public vs BSARec, 5-segment 진단 분석으로 mechanism 정량 증명 ([docs/diagnosis_tifu_vs_bsarec.ipynb](docs/diagnosis_tifu_vs_bsarec.ipynb))
 - **Full 3-stage RecSys + Explainer** - Stage 1 retrieval (10여 종 ablation) → Stage 2 ranking (LGBM Learn-to-Rank, +15.2% lift) → Stage 3 re-ranking (5섹션 multi-objective carousel) → RAG explainer 까지 production 컨벤션 전 구간 구현
 - **Calibration framework** - family-agnostic self-val ↔ public ratio 측정 인프라로 미제출 모델 의사결정 가능
 - **RAG-based Shopping Advisor with hard-gate trust layer** - Evidence Pack (약 40가지 signal) + claim 단위 evidence_ref whitelist + 5단계 hard-gate. shopping 모드 응답이 자동 검증 가능 (아래 상세)
